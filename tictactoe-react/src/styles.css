@@ -585,7 +585,7 @@ html, body { overflow-x: hidden; }
   .actions { margin: 1rem 0; }
 
   .chat {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0;
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 30; margin: 0;
     border-radius: 18px 18px 0 0; border-bottom: 0; box-shadow: 0 -4px 0 var(--ink);
     padding: .5rem .8rem calc(.6rem + env(safe-area-inset-bottom));
   }
