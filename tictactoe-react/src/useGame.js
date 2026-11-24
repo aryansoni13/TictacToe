@@ -9,7 +9,7 @@ import {
 import { ref, push, set, remove, onValue, onDisconnect, limitToLast, query as rtQuery, serverTimestamp as rtNow } from 'firebase/database';
 import { auth, db, rtdb } from './firebase.js';
 
-const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O, easy to read aloud
 const EMPTY = Array(9).fill('');
 
@@ -22,6 +22,7 @@ const MSG = {
   'auth/operation-not-allowed': 'Email sign-in is not switched on in Firebase yet',
   'auth/unauthorized-domain': 'This website address is not allowed yet: add it under Firebase → Authentication → Settings → Authorized domains',
   'auth/popup-blocked': 'The browser blocked the Google popup, allow popups and try again',
+  PERMISSION_DENIED: 'The chat database refused this. In Firebase → Realtime Database → Rules, paste everything from database.rules.json and click Publish',
   'permission-denied': 'Firestore refused this. Make sure the Firestore database is created and the rules from firestore.rules are published',
   unavailable: 'Cannot reach Firestore. Make sure a Firestore database is created in your Firebase project',
 };
@@ -64,8 +65,10 @@ export function useGame() {
       setGames(snap.docs.map((d) => {
         const g = d.data();
         const me = g.x.uid === uid ? 'X' : 'O';
-        return { id: d.id, date: g.date, me, opp: (me === 'X' ? g.o : g.x).name,
-          result: g.winner === 'draw' ? 'draw' : g.winner === me ? 'win' : 'loss' };
+        return {
+          id: d.id, date: g.date, me, opp: (me === 'X' ? g.o : g.x).name,
+          result: g.winner === 'draw' ? 'draw' : g.winner === me ? 'win' : 'loss'
+        };
       }).sort((a, b) => b.date - a.date).slice(0, 30));
     }, (e) => setError(nice(e)));
 
@@ -79,7 +82,7 @@ export function useGame() {
   const mine = useRef([]); // ids of my messages, so they can be deleted when I leave
   useEffect(() => {
     if (!code || !seat) { setMessages([]); return; }
-    let stop = () => {}, dead = false, tries = 0;
+    let stop = () => { }, dead = false, tries = 0;
     const seatRef = ref(rtdb, `members/${code}/${seat}`);
 
     // Claim my seat first (the database only lets seat holders read the chat), then listen.
