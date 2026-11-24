@@ -93,7 +93,7 @@ header {
 
 h1 {
   margin: 0;
-  font-size: 3rem;
+  font-size: clamp(2.2rem, 7vw, 3.4rem);
   line-height: 1;
   color: var(--paper);
   -webkit-text-stroke: 3px var(--ink);
@@ -561,16 +561,16 @@ input:focus {
 /* room screen: board on the left, chat on the right (wide screens) */
 html, body { overflow-x: hidden; }
 .app { overflow-x: clip; }
-.app.wide { max-width: 940px; }
-.room-layout { z-index: 5; display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 380px); gap: 1.75rem; justify-content: center; align-items: start; }
+.app.wide { max-width: 1040px; }
+.room-layout { z-index: 5; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: clamp(1rem, 3vw, 1.75rem); justify-content: center; align-items: start; }
 .history { max-width: 480px; margin-left: auto; margin-right: auto; }
 .chat { position: sticky; top: 1rem; }
-.chat ul { height: 440px; }
+.chat ul { height: clamp(260px, 52vh, 460px); }
 .room-nav { display: none; }
 
 /* phones: one panel at a time. The Game and Chat tabs at the bottom switch between them,
    so nothing overlaps and the chat gets the whole screen (and sits above the keyboard). */
-@media (max-width: 900px) {
+@media (max-width: 719px) {
   .room-layout { display: block; }
   .app.wide { padding: .8rem 1rem calc(5.5rem + env(safe-area-inset-bottom)); }
   .app.wide .tag, .app.wide .blob, .app.wide .star { display: none; }
@@ -623,7 +623,7 @@ html, body { overflow-x: hidden; }
   font: inherit; color: var(--ink); background: var(--paper); border: var(--line); border-radius: 20px;
   box-shadow: var(--pop); cursor: pointer; transition: transform .1s, box-shadow .1s;
 }
-.game-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (max-width: 559px) { .game-card:last-child:nth-child(odd) { grid-column: 1 / -1; } }
 .game-card:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); }
 .game-card:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--ink); }
 .game-card .emoji { font-size: 2.4rem; line-height: 1; }
@@ -668,7 +668,7 @@ html, body { overflow-x: hidden; }
 
 /* ---------- Sudoku ---------- */
 .sudoku {
-  display: grid; grid-template-columns: repeat(9, 1fr); max-width: 380px; margin: .6rem auto; overflow: hidden;
+  display: grid; grid-template-columns: repeat(9, 1fr); max-width: min(100%, 440px); margin: .6rem auto; overflow: hidden;
   background: var(--paper); border: var(--line); border-radius: 14px; box-shadow: var(--pop);
 }
 .sudoku.idle { opacity: .6; }
@@ -684,5 +684,45 @@ html, body { overflow-x: hidden; }
 .sd.given { color: var(--ink); background: #ffeef5; font-weight: 700; }
 .sd.sel { background: var(--lilac); }
 .sd.bad { color: #b3123f; background: #ffd0dc; }
-.numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; max-width: 380px; margin: .8rem auto 0; }
+.numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; max-width: min(100%, 440px); margin: .8rem auto 0; }
 .numpad .btn { padding: .45rem 0; box-shadow: 2px 2px 0 var(--ink); }
+
+/* ---------- responsive polish: phones < 720px, tablets 720-1099px, desktops 1100px+ ---------- */
+.app { padding: clamp(1rem, 4vw, 2rem) clamp(.9rem, 4vw, 1.5rem) 3rem; }
+.app.menu { max-width: 760px; }
+.app.menu .auth, .app.menu .lobby { max-width: 480px; margin-inline: auto; }
+
+/* the board grows with the screen but never taller than the window, so it fits without scrolling */
+.play .board { max-width: 520px; max-width: min(520px, max(240px, calc(100dvh - 15rem))); margin-inline: auto; }
+.play .roombar span { font-size: clamp(.95rem, 2.4vw, 1.15rem); }
+.scores .card span { font-size: clamp(.85rem, 2.2vw, 1rem); }
+.card b { font-size: clamp(1.6rem, 4vw, 2.2rem); }
+
+/* menu: 3 across, and the last row is centered instead of left-aligned */
+@media (min-width: 560px) {
+  .hub-grid { display: flex; flex-wrap: wrap; justify-content: center; }
+  .hub-grid .game-card { flex: 0 0 calc((100% - 2rem) / 3); }
+}
+
+/* on tablets and up the decorative circles can overhang the content column; they are cut off only by the window edge */
+@media (min-width: 720px) { .app { overflow-x: visible; } }
+
+@media (max-width: 719px) {
+  .play .board { max-width: 340px; max-width: min(340px, max(240px, calc(100dvh - 17rem))); }
+}
+
+/* small phones */
+@media (max-width: 380px) {
+  .race-row { grid-template-columns: 4.5rem 1fr 2.4rem; }
+  .sd { font-size: .95rem; }
+  .game-card { padding: .8rem .4rem; }
+  .game-card .emoji { font-size: 2rem; }
+  .room-nav button { padding: .5rem; font-size: .9rem; }
+  .code { letter-spacing: .2em; }
+}
+
+/* big screens: a bit more breathing room */
+@media (min-width: 1100px) {
+  .app.wide { padding-top: 2.5rem; }
+  .room-layout { gap: 2.25rem; }
+}

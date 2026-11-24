@@ -182,7 +182,7 @@ export default function App() {
   useEffect(() => { if (!user) setPicked(null); }, [user]);
 
   return (
-    <main className={`app ${room ? 'wide' : ''}`} data-tab={room ? tab : 'game'}>
+    <main className={`app ${room ? 'wide' : user ? 'menu' : ''}`} data-tab={room ? tab : 'game'}>
       <i className="blob b1" /><i className="blob b2" /><i className="blob b3" /><i className="star s1">✦</i><i className="star s2">✦</i>
 
       <header>
