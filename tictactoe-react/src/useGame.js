@@ -4,7 +4,7 @@ import {
   GoogleAuthProvider, signOut, updateProfile,
 } from 'firebase/auth';
 import {
-  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, where, writeBatch, serverTimestamp,
+  collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, writeBatch, serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 
@@ -37,6 +37,7 @@ export function useGame() {
   const [ready, setReady] = useState(false);
   const [room, setRoom] = useState(null);
   const [games, setGames] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [error, setError] = useState('');
   const prevRoom = useRef(null);
   const leaving = useRef(false);
@@ -70,6 +71,17 @@ export function useGame() {
     return () => { stopRoom(); stopGames(); prevRoom.current = null; };
   }, [uid]);
 
+  // Live chat for the current room. `rid` is unique per room, so a reused room code never shows old messages.
+  const code = room?.code, rid = room && (room.rid || room.code); // rooms made before chat existed have no rid
+  useEffect(() => {
+    if (!code || !rid) { setMessages([]); return; }
+    return onSnapshot(query(collection(db, 'rooms', code, 'messages'), where('rid', '==', rid)), (snap) => {
+      // a message you just sent has no server time yet, so treat it as "now"
+      const at = (m) => m.at?.toMillis() ?? Date.now();
+      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => at(a) - at(b)).slice(-100));
+    }, (e) => setError(nice(e)));
+  }, [code, rid]);
+
   // run an action, showing any failure as a message instead of crashing
   const act = (fn) => async (...args) => {
     setError('');
@@ -79,7 +91,13 @@ export function useGame() {
   const roomRef = (code) => doc(db, 'rooms', code);
 
   return {
-    user, ready, room, games, error,
+    user, ready, room, games, messages, error,
+
+    chat: act(async (text) => {
+      text = text.trim().slice(0, 200);
+      if (!text || !room) return;
+      await addDoc(collection(db, 'rooms', room.code, 'messages'), { rid: room.rid || room.code, uid, text, at: serverTimestamp() });
+    }),
     clearError: () => setError(''),
 
     signup: act(async (name, email, pw) => {
@@ -99,7 +117,7 @@ export function useGame() {
       let code = newCode();
       while ((await getDoc(roomRef(code))).exists()) code = newCode();
       await setDoc(roomRef(code), {
-        code, uids: [uid], players: { X: user, O: null }, board: EMPTY, turn: 'X', starter: 'X',
+        code, rid: crypto.randomUUID(), uids: [uid], players: { X: user, O: null }, board: EMPTY, turn: 'X', starter: 'X',
         score: { X: 0, O: 0, draws: 0 }, over: false, winner: null, line: null, createdAt: serverTimestamp(),
       });
     }),

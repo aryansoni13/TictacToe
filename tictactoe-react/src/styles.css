@@ -544,3 +544,64 @@ input:focus {
 }
 .auth .or { text-align: center; margin: 0; }
 .btn .g { width: 1.1em; height: 1.1em; vertical-align: -0.2em; margin-right: .5em; }
+
+/* chat */
+.chat { margin-top: 1.5rem; }
+.chat h2 { margin: 0 0 .6rem; font-size: 1.2rem; }
+.chat ul { list-style: none; margin: 0 0 .7rem; padding: .6rem; height: 190px; overflow-y: auto; display: flex; flex-direction: column; gap: .5rem; background: var(--bg); border: var(--line); border-radius: 16px; }
+.chat li { max-width: 80%; }
+.chat li.empty { align-self: center; opacity: .6; }
+.chat li small { display: block; font-size: .75rem; opacity: .65; margin: 0 .5rem; }
+.chat li p { margin: 0; padding: .4rem .8rem; border: 2px solid var(--ink); border-radius: 16px; background: var(--paper); word-break: break-word; }
+.chat li.mine { align-self: flex-end; text-align: right; }
+.chat li.mine p { background: var(--pink); }
+.chat form { flex-direction: row; }
+.chat input { flex: 1; min-width: 0; }
+
+/* room: board on the left, chat on the right (wide screens) */
+.app.wide { max-width: 940px; }
+.room-layout { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 380px); gap: 1.75rem; justify-content: center; align-items: start; }
+.history { max-width: 480px; margin-left: auto; margin-right: auto; }
+.chat { margin-top: 0; position: sticky; top: 1rem; }
+.chat-head { display: flex; justify-content: space-between; align-items: center; }
+.chat-close, .chat-fab { display: none; }
+.chat ul { height: 440px; }
+
+/* phones and tablets: chat is a button that opens a sheet over the bottom half, so there is no scrolling to reach it */
+@media (max-width: 900px) {
+  .room-layout { grid-template-columns: minmax(0, 1fr); }
+  .chat-fab {
+    display: grid; place-items: center; position: fixed; right: 1rem; bottom: 1rem; z-index: 20;
+    width: 3.6rem; height: 3.6rem; font-size: 1.6rem; cursor: pointer;
+    background: var(--pink); border: var(--line); border-radius: 50%; box-shadow: var(--pop);
+  }
+  .chat-fab .badge {
+    position: absolute; top: -.4rem; right: -.4rem; min-width: 1.4rem; height: 1.4rem; padding: 0 .3rem;
+    display: grid; place-items: center; font-size: .8rem; font-weight: 700;
+    background: var(--ink); color: var(--paper); border-radius: 999px;
+  }
+  .chat {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 30; margin: 0;
+    border-radius: 22px 22px 0 0; border-bottom: 0; box-shadow: 0 -4px 0 var(--ink);
+    transform: translateY(110%); transition: transform .25s ease; visibility: hidden;
+  }
+  .chat.open { transform: none; visibility: visible; }
+  .chat ul { height: 38vh; }
+  .chat-close {
+    display: grid; place-items: center; width: 2.2rem; height: 2.2rem; cursor: pointer; font: inherit; font-weight: 700;
+    background: var(--paper); color: var(--ink); border: var(--line); border-radius: 50%;
+  }
+}
+
+/* fix: the history card was painting over the chat sheet, because both sat at the same layer */
+.room-layout { z-index: 5; }
+
+@media (max-width: 900px) {
+  .chat { padding: .7rem .9rem calc(.7rem + env(safe-area-inset-bottom)); }
+  .chat h2 { font-size: 1.05rem; }
+  .chat ul { height: min(30vh, 220px); margin-bottom: .5rem; padding: .5rem; }
+  .chat form { gap: .5rem; }
+  .chat input { padding: .55rem .75rem; }
+  .chat .btn { padding: .5rem 1rem; box-shadow: 3px 3px 0 var(--ink); }
+  .chat-fab { bottom: calc(1rem + env(safe-area-inset-bottom)); }
+}

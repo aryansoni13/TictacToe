@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Auth from './Auth.jsx';
 import { useGame } from './useGame.js';
 
@@ -51,6 +51,55 @@ function Lobby({ game }) {
   );
 }
 
+function Chat({ game, nameOf }) {
+  const { messages, user, room } = game;
+  const [text, setText] = useState('');
+  const list = useRef(null);
+  // On phones the chat is a slide-up sheet; on wide screens CSS keeps it open beside the board.
+  const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState(0);
+  const unread = messages.slice(seen).filter((m) => m.uid !== user.uid).length;
+
+  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages.length, open]);
+  useEffect(() => { if (open) setSeen(messages.length); }, [open, messages.length]);
+
+  function submit(e) {
+    e.preventDefault();
+    game.chat(text);
+    setText('');
+  }
+
+  return (
+    <>
+      {!open && (
+        <button className="chat-fab" onClick={() => setOpen(true)} aria-label="Open chat">
+          💬{unread > 0 && <span className="badge">{unread}</span>}
+        </button>
+      )}
+      <section className={`panel chat ${open ? 'open' : ''}`}>
+        <div className="chat-head">
+          <h2>Room chat</h2>
+          <button className="chat-close" onClick={() => setOpen(false)} aria-label="Close chat">✕</button>
+        </div>
+      <ul ref={list} aria-live="polite">
+        {messages.length === 0 && <li className="empty">Say hi 👋</li>}
+        {messages.map((m) => (
+          <li key={m.id} className={m.uid === user.uid ? 'mine' : 'theirs'}>
+            <small>{m.uid === user.uid ? 'You' : nameOf(m.uid)}</small>
+            <p>{m.text}</p>
+          </li>
+        ))}
+      </ul>
+      <form onSubmit={submit}>
+        <input value={text} maxLength={200} placeholder="Type a message…" onChange={(e) => setText(e.target.value)} />
+        <button className="btn primary" disabled={!text.trim() || !room}>Send</button>
+      </form>
+      {game.error && <p className="err" role="alert">{game.error}</p>}
+      </section>
+    </>
+  );
+}
+
 function Room({ game }) {
   const { room, user } = game;
   const [copied, setCopied] = useState(false);
@@ -70,7 +119,8 @@ function Room({ game }) {
         : myTurn ? 'Your turn' : `${name(room.turn)}'s turn…`;
 
   return (
-    <>
+    <div className="room-layout">
+      <div className="play">
       <div className="roombar">
         <span>Room</span>
         <button className="code" onClick={copy} title="Copy code">{copied ? 'copied!' : room.code}</button>
@@ -106,7 +156,11 @@ function Room({ game }) {
         {room.over && <button className="btn primary" onClick={game.rematch}>Rematch</button>}
         <button className="btn" onClick={game.leave}>Leave room</button>
       </div>
-    </>
+      </div>
+
+      {/* names come from the room, not from the message, so nobody can fake a sender */}
+      <Chat game={game} nameOf={(uid) => ['X', 'O'].map((m) => room.players[m]).find((p) => p?.uid === uid)?.name || 'Player'} />
+    </div>
   );
 }
 
@@ -115,7 +169,7 @@ export default function App() {
   const { user, room, games, ready } = game;
 
   return (
-    <main className="app">
+    <main className={`app ${room ? 'wide' : ''}`}>
       <i className="blob b1" /><i className="blob b2" /><i className="blob b3" /><i className="star s1">✦</i><i className="star s2">✦</i>
 
       <header>
