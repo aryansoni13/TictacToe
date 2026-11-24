@@ -605,3 +605,19 @@ input:focus {
   .chat .btn { padding: .5rem 1rem; box-shadow: 3px 3px 0 var(--ink); }
   .chat-fab { bottom: calc(1rem + env(safe-area-inset-bottom)); }
 }
+
+/* fix: decorative circles stuck out of the right edge, which made phones widen the page and pushed the fixed chat button off-screen */
+html, body { overflow-x: hidden; }
+.app { overflow-x: clip; }
+
+/* phones: the chat drops down from the TOP so the on-screen keyboard (which rises from the bottom) can never cover the text box */
+@media (max-width: 900px) {
+  .chat {
+    top: 0; bottom: auto; border-radius: 0 0 22px 22px; border-top: 0; border-bottom: var(--line);
+    box-shadow: 0 4px 0 var(--ink);
+    padding: calc(.7rem + env(safe-area-inset-top)) .9rem .8rem;
+    transform: translateY(-110%);
+  }
+  .chat.open { transform: none; }
+  .chat ul { height: min(28vh, 200px); }
+}
