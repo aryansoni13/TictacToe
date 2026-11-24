@@ -55,13 +55,8 @@ function Chat({ game, nameOf }) {
   const { messages, user, room } = game;
   const [text, setText] = useState('');
   const list = useRef(null);
-  // On phones the chat is a slide-up sheet; on wide screens CSS keeps it open beside the board.
-  const [open, setOpen] = useState(false);
-  const [seen, setSeen] = useState(0);
-  const unread = messages.slice(seen).filter((m) => m.uid !== user.uid).length;
 
-  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages.length, open]);
-  useEffect(() => { if (open) setSeen(messages.length); }, [open, messages.length]);
+  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages.length]);
 
   function submit(e) {
     e.preventDefault();
@@ -70,17 +65,8 @@ function Chat({ game, nameOf }) {
   }
 
   return (
-    <>
-      {!open && (
-        <button className="chat-fab" onClick={() => setOpen(true)} aria-label="Open chat">
-          💬{unread > 0 && <span className="badge">{unread}</span>}
-        </button>
-      )}
-      <section className={`panel chat ${open ? 'open' : ''}`}>
-        <div className="chat-head">
-          <h2>Room chat</h2>
-          <button className="chat-close" onClick={() => setOpen(false)} aria-label="Close chat">✕</button>
-        </div>
+    <section className="panel chat">
+      <h2>Room chat</h2>
       <ul ref={list} aria-live="polite">
         {messages.length === 0 && <li className="empty">Say hi 👋</li>}
         {messages.map((m) => (
@@ -95,8 +81,7 @@ function Chat({ game, nameOf }) {
         <button className="btn primary" disabled={!text.trim() || !room}>Send</button>
       </form>
       {game.error && <p className="err" role="alert">{game.error}</p>}
-      </section>
-    </>
+    </section>
   );
 }
 
