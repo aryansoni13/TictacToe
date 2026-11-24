@@ -51,17 +51,13 @@ function Lobby({ game }) {
   );
 }
 
-function Chat({ game, nameOf }) {
+function Chat({ game, nameOf, active }) {
   const { messages, user, room } = game;
   const [text, setText] = useState('');
   const list = useRef(null);
-  // Phones only: the docked chat can be folded down to a slim bar. Wide screens ignore this.
-  const [open, setOpen] = useState(true);
-  const [seen, setSeen] = useState(0);
-  const unread = messages.slice(seen).filter((m) => m.uid !== user.uid).length;
 
-  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages.length, open]);
-  useEffect(() => { if (open) setSeen(messages.length); }, [open, messages.length]);
+  // jump to the newest message when one arrives, or when the phone's Chat tab is opened
+  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages.length, active]);
 
   function submit(e) {
     e.preventDefault();
@@ -70,13 +66,8 @@ function Chat({ game, nameOf }) {
   }
 
   return (
-    <section className={`panel chat ${open ? '' : 'collapsed'}`}>
-      <div className="chat-head">
-        <h2>Room chat{!open && unread > 0 && <span className="badge">{unread}</span>}</h2>
-        <button className="chat-toggle" onClick={() => setOpen(!open)} aria-label={open ? 'Hide chat' : 'Show chat'}>
-          {open ? '✕' : '💬'}
-        </button>
-      </div>
+    <section className="panel chat">
+      <h2>Room chat</h2>
       <ul ref={list} aria-live="polite">
         {messages.length === 0 && <li className="empty">Say hi 👋</li>}
         {messages.map((m) => (
@@ -95,13 +86,18 @@ function Chat({ game, nameOf }) {
   );
 }
 
-function Room({ game }) {
-  const { room, user } = game;
+// tab: which panel a phone shows ('game' or 'chat'). Wide screens show both side by side and ignore it.
+function Room({ game, tab, setTab }) {
+  const { room, user, messages } = game;
   const [copied, setCopied] = useState(false);
+  const [seen, setSeen] = useState(0);
   const me = room.players.X.uid === user.uid ? 'X' : 'O';
   const full = !!room.players.O;
   const name = (m) => room.players[m]?.name;
   const myTurn = full && !room.over && room.turn === me;
+
+  useEffect(() => { if (tab === 'chat') setSeen(messages.length); }, [tab, messages.length]);
+  const unread = messages.slice(seen).filter((m) => m.uid !== user.uid).length;
 
   function copy() {
     navigator.clipboard?.writeText(room.code);
@@ -116,45 +112,53 @@ function Room({ game }) {
   return (
     <div className="room-layout">
       <div className="play">
-      <div className="roombar">
-        <span>Room</span>
-        <button className="code" onClick={copy} title="Copy code">{copied ? 'copied!' : room.code}</button>
-      </div>
+        <div className="roombar">
+          <span>Room</span>
+          <button className="code" onClick={copy} title="Copy code">{copied ? 'copied!' : room.code}</button>
+        </div>
 
-      <section className="scores">
-        {['X', 'O'].map((m) => (
-          <div key={m} className={`card ${full && !room.over && room.turn === m ? 'live' : ''}`}>
-            <em>{m}</em>
-            <span>{name(m) ? <>{name(m)}{m === me && ' (you)'}</> : 'waiting…'}</span>
-            <b>{room.score[m]}</b>
-          </div>
-        ))}
-      </section>
+        <section className="scores">
+          {['X', 'O'].map((m) => (
+            <div key={m} className={`card ${full && !room.over && room.turn === m ? 'live' : ''}`}>
+              <em>{m}</em>
+              <span>{name(m) ? <>{name(m)}{m === me && ' (you)'}</> : 'waiting…'}</span>
+              <b>{room.score[m]}</b>
+            </div>
+          ))}
+        </section>
 
-      <p className={`status ${room.over ? 'done' : ''}`}>{status}</p>
+        <p className={`status ${room.over ? 'done' : ''}`}>{status}</p>
 
-      <section className={`board ${full ? '' : 'idle'}`}>
-        {room.board.map((cell, i) => (
-          <button
-            key={i}
-            className={`cell ${room.line?.includes(i) ? 'win' : ''}`}
-            onClick={() => game.move(i)}
-            disabled={!myTurn || !!cell}
-            aria-label={`row ${Math.floor(i / 3) + 1} column ${(i % 3) + 1}${cell ? `, ${cell}` : ''}`}
-          >
-            {cell && <Mark p={cell} />}
-          </button>
-        ))}
-      </section>
+        <section className={`board ${full ? '' : 'idle'}`}>
+          {room.board.map((cell, i) => (
+            <button
+              key={i}
+              className={`cell ${room.line?.includes(i) ? 'win' : ''}`}
+              onClick={() => game.move(i)}
+              disabled={!myTurn || !!cell}
+              aria-label={`row ${Math.floor(i / 3) + 1} column ${(i % 3) + 1}${cell ? `, ${cell}` : ''}`}
+            >
+              {cell && <Mark p={cell} />}
+            </button>
+          ))}
+        </section>
 
-      <div className="actions">
-        {room.over && <button className="btn primary" onClick={game.rematch}>Rematch</button>}
-        <button className="btn" onClick={game.leave}>Leave room</button>
-      </div>
+        <div className="actions">
+          {room.over && <button className="btn primary" onClick={game.rematch}>Rematch</button>}
+          <button className="btn" onClick={game.leave}>Leave room</button>
+        </div>
       </div>
 
       {/* names come from the room, not from the message, so nobody can fake a sender */}
-      <Chat game={game} nameOf={(uid) => ['X', 'O'].map((m) => room.players[m]).find((p) => p?.uid === uid)?.name || 'Player'} />
+      <Chat game={game} active={tab === 'chat'}
+        nameOf={(uid) => ['X', 'O'].map((m) => room.players[m]).find((p) => p?.uid === uid)?.name || 'Player'} />
+
+      <nav className="room-nav" aria-label="Game or chat">
+        <button className={tab === 'game' ? 'on' : ''} onClick={() => setTab('game')}>🎮 Game</button>
+        <button className={tab === 'chat' ? 'on' : ''} onClick={() => setTab('chat')}>
+          💬 Chat{unread > 0 && <span className="badge">{unread}</span>}
+        </button>
+      </nav>
     </div>
   );
 }
@@ -162,9 +166,12 @@ function Room({ game }) {
 export default function App() {
   const game = useGame();
   const { user, room, games, ready } = game;
+  const [tab, setTab] = useState('game');
+
+  useEffect(() => { if (!room) setTab('game'); }, [room]); // a new room always starts on the board
 
   return (
-    <main className={`app ${room ? 'wide' : ''}`}>
+    <main className={`app ${room ? 'wide' : ''}`} data-tab={room ? tab : 'game'}>
       <i className="blob b1" /><i className="blob b2" /><i className="blob b3" /><i className="star s1">✦</i><i className="star s2">✦</i>
 
       <header>
@@ -179,7 +186,7 @@ export default function App() {
       </header>
 
       {!ready ? null : !user ? <Auth game={game} />
-        : room ? <Room game={game} />
+        : room ? <Room game={game} tab={tab} setTab={setTab} />
           : <Lobby game={game} />}
 
       {user && <History games={games} />}

@@ -566,11 +566,13 @@ html, body { overflow-x: hidden; }
 .history { max-width: 480px; margin-left: auto; margin-right: auto; }
 .chat { position: sticky; top: 1rem; }
 .chat ul { height: 440px; }
+.room-nav { display: none; }
 
-/* phones: the room screen is compacted and the chat is docked at the bottom, so board and chat are on screen together and nothing is covered */
+/* phones: one panel at a time. The Game and Chat tabs at the bottom switch between them,
+   so nothing overlaps and the chat gets the whole screen (and sits above the keyboard). */
 @media (max-width: 900px) {
-  .room-layout { grid-template-columns: minmax(0, 1fr); }
-  .app.wide { padding: .8rem 1rem calc(210px + env(safe-area-inset-bottom)); }
+  .room-layout { display: block; }
+  .app.wide { padding: .8rem 1rem calc(5.5rem + env(safe-area-inset-bottom)); }
   .app.wide .tag, .app.wide .blob, .app.wide .star { display: none; }
   .app.wide header { margin-bottom: .5rem; }
   .app.wide h1 { font-size: 2rem; -webkit-text-stroke-width: 2px; text-shadow: 3px 3px 0 var(--ink); }
@@ -581,32 +583,34 @@ html, body { overflow-x: hidden; }
   .card { padding: .3rem; }
   .card b { font-size: 1.6rem; }
   .status { font-size: 1.15rem; margin: .6rem 0; min-height: 1.5rem; }
-  .board { max-width: 300px; margin: 0 auto; padding: .5rem; gap: .5rem; border-radius: 22px; }
-  .actions { margin: 1rem 0; }
+  .board { max-width: 340px; margin: 0 auto; padding: .6rem; gap: .55rem; border-radius: 24px; }
+  .actions { margin: 1.1rem 0; }
+
+  .app[data-tab='game'] .chat { display: none; }
+  .app[data-tab='chat'] .play,
+  .app[data-tab='chat'] header,
+  .app[data-tab='chat'] .history { display: none; }
 
   .chat {
-    position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: auto; z-index: 30; margin: 0;
-    border-radius: 18px 18px 0 0; border-bottom: 0; box-shadow: 0 -4px 0 var(--ink);
-    padding: .5rem .8rem calc(.6rem + env(safe-area-inset-bottom));
+    position: static; display: flex; flex-direction: column; margin: 0;
+    height: calc(100vh - 6.6rem);
+    height: calc(100dvh - 6.6rem - env(safe-area-inset-bottom));
   }
-  .chat h2 { margin: 0; font-size: 1rem; }
-  .chat-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .4rem; }
-  .chat-toggle {
-    display: grid; place-items: center; min-width: 2.2rem; height: 2.2rem; padding: 0 .4rem; cursor: pointer;
-    font: inherit; font-weight: 700; background: var(--paper); color: var(--ink); border: var(--line); border-radius: 999px;
-  }
-  .chat .badge {
-    display: inline-grid; place-items: center; min-width: 1.3rem; height: 1.3rem; padding: 0 .3rem; margin-left: .4rem;
-    font-size: .8rem; background: var(--pink); border: 2px solid var(--ink); border-radius: 999px;
-  }
-  .chat.collapsed ul, .chat.collapsed form, .chat.collapsed .err { display: none; }
-  .chat.collapsed .chat-head { margin-bottom: 0; }
-  .chat ul { height: 100px; margin: 0 0 .5rem; padding: .4rem; gap: .3rem; }
-  .chat form { gap: .5rem; }
-  .chat input { padding: .5rem .75rem; }
-  .chat .btn { padding: .5rem 1rem; box-shadow: 3px 3px 0 var(--ink); }
-}
+  .chat h2 { margin: 0 0 .6rem; }
+  .chat ul { flex: 1; height: auto; min-height: 0; margin: 0 0 .6rem; }
 
-/* the collapse button only exists on phones */
-.chat-toggle { display: none; }
-@media (max-width: 900px) { .chat-toggle { display: grid; } }
+  .room-nav {
+    display: flex; gap: .6rem; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    padding: .6rem .8rem calc(.6rem + env(safe-area-inset-bottom));
+    background: var(--paper); border-top: var(--line);
+  }
+  .room-nav button {
+    position: relative; flex: 1; font: inherit; font-weight: 600; padding: .6rem; cursor: pointer;
+    color: var(--ink); background: var(--paper); border: var(--line); border-radius: 999px;
+  }
+  .room-nav button.on { background: var(--pink); box-shadow: 3px 3px 0 var(--ink); }
+  .room-nav .badge {
+    display: inline-grid; place-items: center; min-width: 1.3rem; height: 1.3rem; padding: 0 .35rem; margin-left: .4rem;
+    font-size: .8rem; color: var(--paper); background: var(--ink); border-radius: 999px;
+  }
+}
