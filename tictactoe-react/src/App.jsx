@@ -55,8 +55,13 @@ function Chat({ game, nameOf }) {
   const { messages, user, room } = game;
   const [text, setText] = useState('');
   const list = useRef(null);
+  // Phones only: the docked chat can be folded down to a slim bar. Wide screens ignore this.
+  const [open, setOpen] = useState(true);
+  const [seen, setSeen] = useState(0);
+  const unread = messages.slice(seen).filter((m) => m.uid !== user.uid).length;
 
-  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages.length]);
+  useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight }); }, [messages.length, open]);
+  useEffect(() => { if (open) setSeen(messages.length); }, [open, messages.length]);
 
   function submit(e) {
     e.preventDefault();
@@ -65,8 +70,13 @@ function Chat({ game, nameOf }) {
   }
 
   return (
-    <section className="panel chat">
-      <h2>Room chat</h2>
+    <section className={`panel chat ${open ? '' : 'collapsed'}`}>
+      <div className="chat-head">
+        <h2>Room chat{!open && unread > 0 && <span className="badge">{unread}</span>}</h2>
+        <button className="chat-toggle" onClick={() => setOpen(!open)} aria-label={open ? 'Hide chat' : 'Show chat'}>
+          {open ? '✕' : '💬'}
+        </button>
+      </div>
       <ul ref={list} aria-live="polite">
         {messages.length === 0 && <li className="empty">Say hi 👋</li>}
         {messages.map((m) => (

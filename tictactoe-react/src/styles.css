@@ -31,7 +31,7 @@ body {
   text-align: center;
 }
 
-.app>*:not(.blob):not(.star) {
+.app>:where(*:not(.blob):not(.star)) {
   position: relative;
   z-index: 1;
 }
@@ -589,9 +589,24 @@ html, body { overflow-x: hidden; }
     border-radius: 18px 18px 0 0; border-bottom: 0; box-shadow: 0 -4px 0 var(--ink);
     padding: .5rem .8rem calc(.6rem + env(safe-area-inset-bottom));
   }
-  .chat h2 { display: none; }
+  .chat h2 { margin: 0; font-size: 1rem; }
+  .chat-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .4rem; }
+  .chat-toggle {
+    display: grid; place-items: center; min-width: 2.2rem; height: 2.2rem; padding: 0 .4rem; cursor: pointer;
+    font: inherit; font-weight: 700; background: var(--paper); color: var(--ink); border: var(--line); border-radius: 999px;
+  }
+  .chat .badge {
+    display: inline-grid; place-items: center; min-width: 1.3rem; height: 1.3rem; padding: 0 .3rem; margin-left: .4rem;
+    font-size: .8rem; background: var(--pink); border: 2px solid var(--ink); border-radius: 999px;
+  }
+  .chat.collapsed ul, .chat.collapsed form, .chat.collapsed .err { display: none; }
+  .chat.collapsed .chat-head { margin-bottom: 0; }
   .chat ul { height: 100px; margin: 0 0 .5rem; padding: .4rem; gap: .3rem; }
   .chat form { gap: .5rem; }
   .chat input { padding: .5rem .75rem; }
   .chat .btn { padding: .5rem 1rem; box-shadow: 3px 3px 0 var(--ink); }
 }
+
+/* the collapse button only exists on phones */
+.chat-toggle { display: none; }
+@media (max-width: 900px) { .chat-toggle { display: grid; } }
