@@ -32,7 +32,7 @@ function History({ games }) {
 function Hub({ onPick, onCancel }) {
   return (
     <section className="hub">
-      <h2>Choose a game</h2>
+      <h2>Invite your friend to a game</h2>
       <div className="hub-grid">
         {GAMES.map((g) => (
           <button key={g.id} className="game-card" onClick={() => onPick(g.id)}>
@@ -75,6 +75,22 @@ function Waiting({ code, onCopy, copied }) {
       <p className="or">Send them this code. The games unlock as soon as they join.</p>
       <button className="code big" onClick={onCopy} title="Copy code">{copied ? 'copied!' : code}</button>
     </section>
+  );
+}
+
+// The other player invited me to a game: nothing changes for me until I press Join.
+function Invite({ room, user, onAccept, onDecline }) {
+  const inv = room?.invite;
+  if (!inv || inv.by.uid === user.uid) return null;
+  const g = byId[inv.game];
+  return (
+    <div className="invite" role="alert">
+      <p>{g.emoji} <b>{inv.by.name}</b> invites you to play <b>{g.name}</b></p>
+      <div className="invite-actions">
+        <button className="btn primary small" onClick={onAccept}>Join</button>
+        <button className="btn small" onClick={onDecline}>Not now</button>
+      </div>
+    </div>
   );
 }
 
@@ -147,8 +163,8 @@ function Room({ game, tab, setTab }) {
 
   function pick(id) {
     if (id === room.game) { if (room.over) game.rematch(); setPicking(false); return; } // same game again = rematch
-    if (G && !room.over && !window.confirm('Switch game? The round in progress will be dropped.')) return;
-    game.chooseGame(id);
+    game.invite(id); // the other player decides whether to join
+    setPicking(false);
   }
 
   function copy() {
@@ -157,7 +173,7 @@ function Room({ game, tab, setTab }) {
   }
 
   const status = !full ? 'Waiting for your friend…'
-    : showMenu ? 'Either of you can pick'
+    : showMenu ? 'Pick a game to invite them'
     : room.winner === 'draw' ? "It's a draw 💕"
       : room.winner ? (room.winner === me ? 'You win! 🎉' : `${name(room.winner)} wins!`)
         : !turnGame ? 'Race! First to finish wins'
@@ -170,6 +186,13 @@ function Room({ game, tab, setTab }) {
           <span>{G ? `${G.emoji} ${G.name}` : '🎮 No game yet'}</span>
           <button className="code" onClick={copy} title="Copy code">{copied ? 'copied!' : room.code}</button>
         </div>
+
+        {room.invite?.by.uid === user.uid && (
+          <p className="sent">
+            ⏳ Waiting for {name(me === 'X' ? 'O' : 'X')} to join {byId[room.invite.game].name}
+            <button className="link" onClick={game.decline}>Cancel</button>
+          </p>
+        )}
 
         {canAlert && (
           <button className="link alerts" onClick={() => Notification.requestPermission().then(() => setAsked(true))}>
@@ -199,7 +222,7 @@ function Room({ game, tab, setTab }) {
 
         <div className="actions">
           {G && room.over && !showMenu && <button className="btn primary" onClick={game.rematch}>Rematch</button>}
-          {G && !showMenu && <button className="btn" onClick={() => setPicking(true)}>Change game</button>}
+          {G && !showMenu && <button className="btn" onClick={() => setPicking(true)}>Invite to another game</button>}
           <button className="btn" onClick={game.leave}>Leave room</button>
         </div>
       </div>
@@ -223,12 +246,19 @@ export default function App() {
   const { user, room, games, ready, notice } = game;
   const [tab, setTab] = useState('game');
 
+  function accept() {
+    if (room.game && !room.over && !window.confirm('Join the new game? Your current round will be dropped.')) return;
+    game.accept();
+    setTab('game');
+  }
+
   useEffect(() => { if (!room) setTab('game'); }, [room]); // a new room always starts on the board
 
   return (
     <main className={`app ${room ? 'wide' : user ? 'menu' : ''}`} data-tab={room ? tab : 'game'}>
       <i className="blob b1" /><i className="blob b2" /><i className="blob b3" /><i className="star s1">✦</i><i className="star s2">✦</i>
 
+      <Invite room={room} user={user} onAccept={accept} onDecline={game.decline} />
       <Toast notice={notice} onClose={game.dismissNotice} onOpen={() => { setTab('game'); game.dismissNotice(); }} />
 
       <header>

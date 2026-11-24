@@ -29,20 +29,34 @@ service cloud.firestore {
           && request.resource.data.players.O.uid == request.auth.uid
           && request.resource.data.game == resource.data.game)
         ||
-        // choose or switch the game (either player, any time, but only once both players have joined):
-        // only the game and its fresh state may change, never the seats or the score
+        // send, cancel or decline an invite to a game: nothing but the invite changes, so the other player
+        // keeps playing whatever they are playing until they accept
+        (request.auth.uid in resource.data.uids
+          && resource.data.uids.size() == 2
+          && request.resource.data.uids == resource.data.uids
+          && request.resource.data.players == resource.data.players
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['invite'])
+          && (request.resource.data.invite == null
+              || (request.resource.data.invite.by.uid == request.auth.uid
+                  && request.resource.data.invite.game in ['ttt', 'c4', 'memory', 'sudoku', 'slide'])))
+        ||
+        // accept the OTHER player's invite: this is the only way a game starts or is switched, so nobody can
+        // force a game on the other. Only the game and its fresh state change, never the seats or the score.
         (request.auth.uid in resource.data.uids
           && resource.data.uids.size() == 2
           && request.resource.data.uids == resource.data.uids
           && request.resource.data.players == resource.data.players
           && request.resource.data.code == resource.data.code
-          && request.resource.data.game in ['ttt', 'c4', 'memory', 'sudoku', 'slide']
+          && resource.data.invite != null
+          && resource.data.invite.by.uid != request.auth.uid
+          && request.resource.data.game == resource.data.invite.game
           && request.resource.data.game != resource.data.game
+          && request.resource.data.invite == null
           && request.resource.data.over == false
           && request.resource.data.winner == null
-          && request.resource.data.startedBy.uid == request.auth.uid   // who started it, used for the other player's pop-up
+          && request.resource.data.startedBy.uid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['game', 'startedBy', 'state', 'round', 'turn', 'starter', 'over', 'winner', 'progX', 'progO']))
+               .hasOnly(['game', 'invite', 'startedBy', 'state', 'round', 'turn', 'starter', 'over', 'winner', 'progX', 'progO']))
         ||
         // inside a full room with a game running: who is in it, and which game, never change
         (request.auth.uid in resource.data.uids

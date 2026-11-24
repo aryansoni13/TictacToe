@@ -753,3 +753,16 @@ html, body { overflow-x: hidden; }
 }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, -1.5rem); } }
 
+/* invite from the other player: stays until answered */
+.invite {
+  position: fixed; top: calc(.7rem + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 70;
+  width: min(92vw, 440px); padding: .8rem 1rem; display: grid; gap: .6rem; text-align: center;
+  color: var(--paper); background: var(--ink); border: 3px solid var(--paper); border-radius: 18px;
+  box-shadow: 4px 4px 0 var(--pink-deep); animation: toast-in .35s ease;
+}
+.invite p { margin: 0; }
+.invite-actions { display: flex; gap: .6rem; justify-content: center; }
+.btn.small { padding: .4rem 1.1rem; font-size: .95rem; box-shadow: 3px 3px 0 var(--ink); }
+.sent { margin: 0 0 .6rem; padding: .5rem .8rem; font-weight: 600; background: var(--lilac); border: var(--line); border-radius: 14px; }
+.sent .link { margin-left: .6rem; }
+

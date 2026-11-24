@@ -59,17 +59,24 @@ export function useGame() {
       if (next && next.game !== null && !byId[next.game]) { deleteDoc(snap.docs[0].ref); return; }
       if (!next && prevRoom.current && !leaving.current) setError('Your opponent left, so the room was closed');
       if (!next) leaving.current = false;
-      // tell me what the other player just did: joined the room, or started a game
+      // tell me what the other player just did: joined, invited me to a game, answered my invite, or started a rematch
       const prev = prevRoom.current;
       if (next && prev) {
-        let text = null;
-        if (!prev.players.O && next.players.O) text = `${next.players.O.name} joined, pick a game!`;
-        else if (next.game && next.startedBy && next.startedBy.uid !== uid && (next.round !== prev.round || next.game !== prev.game)) {
-          const g = byId[next.game].name;
-          text = next.game === prev.game ? `${next.startedBy.name} started a new round of ${g}` : `${next.startedBy.name} started ${g}`;
+        const other = next.players[next.players.X.uid === uid ? 'O' : 'X'];
+        const sent = prev.invite && prev.invite.by.uid === uid; // I had an invite out
+        let text = null, toast = true;
+        if (!prev.players.O && next.players.O) text = `${next.players.O.name} joined, invite them to a game!`;
+        else if (next.invite && next.invite.by.uid !== uid
+          && (!prev.invite || prev.invite.game !== next.invite.game || prev.invite.by.uid !== next.invite.by.uid)) {
+          text = `${next.invite.by.name} invites you to play ${byId[next.invite.game].name}`;
+          toast = false; // the invite banner on screen (with its Join button) is the alert for this one
+        } else if (sent && !next.invite) {
+          text = next.game === prev.invite.game ? `${other.name} joined ${byId[next.game].name}, it's starting!` : `${other.name} isn't ready for ${byId[prev.invite.game].name}`;
+        } else if (next.game && next.game === prev.game && next.round !== prev.round && next.startedBy && next.startedBy.uid !== uid) {
+          text = `${next.startedBy.name} started a new round of ${byId[next.game].name}`;
         }
         if (text) {
-          setNotice({ id: Date.now(), text });
+          if (toast) setNotice({ id: Date.now(), text });
           // if this tab isn't in front, also use the system notification (only if the player allowed it)
           if (document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
             new Notification('Pink Arcade', { body: text });
@@ -169,7 +176,7 @@ export function useGame() {
       let code = newCode();
       while ((await getDoc(roomRef(code))).exists()) code = newCode();
       await setDoc(roomRef(code), {
-        code, game: null, startedBy: null, state: null, round: 0, uids: [uid], players: { X: user, O: null }, turn: 'X', starter: 'X',
+        code, game: null, invite: null, startedBy: null, state: null, round: 0, uids: [uid], players: { X: user, O: null }, turn: 'X', starter: 'X',
         score: { X: 0, O: 0, draws: 0 }, over: false, winner: null, createdAt: serverTimestamp(),
       });
     }),
@@ -183,12 +190,25 @@ export function useGame() {
       await updateDoc(snap.ref, { uids: [...r.uids, uid], 'players.O': user });
     }),
 
-    // Start (or switch to) a game in the current room. Scores and seats are untouched.
-    chooseGame: act(async (gameId) => {
-      if (!room) return;
+    // Picking a game sends the other player an invite; nothing changes for them until they accept.
+    invite: act(async (gameId) => {
+      if (!room?.players.O) return;
+      await updateDoc(roomRef(room.code), { invite: { game: gameId, by: user } });
+    }),
+
+    // Accepting starts the invited game for both players, in the same session. Scores and seats are untouched.
+    accept: act(async () => {
+      const inv = room?.invite;
+      if (!inv || inv.by.uid === uid) return;
       await updateDoc(roomRef(room.code), {
-        ...byId[gameId].init(), game: gameId, startedBy: user, round: (room.round || 0) + 1, turn: 'X', starter: 'X', over: false, winner: null,
+        ...byId[inv.game].init(), game: inv.game, invite: null, startedBy: user, round: (room.round || 0) + 1,
+        turn: 'X', starter: 'X', over: false, winner: null,
       });
+    }),
+
+    // Declining, or cancelling your own invite.
+    decline: act(async () => {
+      if (room?.invite) await updateDoc(roomRef(room.code), { invite: null });
     }),
 
     // Leaving closes the room for both players.
