@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
 
 // These values identify the project and are safe in client code; the Firestore rules are what protect the data.
 const app = initializeApp({
@@ -14,3 +15,5 @@ const app = initializeApp({
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+// Chat lives here. Uses the default United States database URL; if you created it in another region, add `databaseURL` above.
+export const rtdb = getDatabase(app);

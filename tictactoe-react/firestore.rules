@@ -33,18 +33,6 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid in resource.data.uids;
     }
 
-    // Chat: only the two players in the room can read or write its messages.
-    match /rooms/{code}/messages/{id} {
-      allow read: if request.auth != null
-        && request.auth.uid in get(/databases/$(database)/documents/rooms/$(code)).data.uids;
-      allow create: if request.auth != null
-        && request.auth.uid in get(/databases/$(database)/documents/rooms/$(code)).data.uids
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 200;
-    }
-
     // One record per finished game, used for each player's history.
     match /games/{id} {
       allow read: if request.auth != null && request.auth.uid in resource.data.uids;

@@ -4,9 +4,10 @@ import {
   GoogleAuthProvider, signOut, updateProfile,
 } from 'firebase/auth';
 import {
-  collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, writeBatch, serverTimestamp,
+  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, where, writeBatch, serverTimestamp,
 } from 'firebase/firestore';
-import { auth, db } from './firebase.js';
+import { ref, push, set, remove, onValue, onDisconnect, limitToLast, query as rtQuery, serverTimestamp as rtNow } from 'firebase/database';
+import { auth, db, rtdb } from './firebase.js';
 
 const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O, easy to read aloud
@@ -71,16 +72,41 @@ export function useGame() {
     return () => { stopRoom(); stopGames(); prevRoom.current = null; };
   }, [uid]);
 
-  // Live chat for the current room. `rid` is unique per room, so a reused room code never shows old messages.
-  const code = room?.code, rid = room && (room.rid || room.code); // rooms made before chat existed have no rid
+  // Live chat for the current room, kept in the Realtime Database only while people are connected.
+  // Nothing is archived: your messages are deleted when you leave, close or refresh the page.
+  const code = room?.code;
+  const seat = room && (room.players.X.uid === uid ? 'X' : 'O');
+  const mine = useRef([]); // ids of my messages, so they can be deleted when I leave
   useEffect(() => {
-    if (!code || !rid) { setMessages([]); return; }
-    return onSnapshot(query(collection(db, 'rooms', code, 'messages'), where('rid', '==', rid)), (snap) => {
-      // a message you just sent has no server time yet, so treat it as "now"
-      const at = (m) => m.at?.toMillis() ?? Date.now();
-      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => at(a) - at(b)).slice(-100));
-    }, (e) => setError(nice(e)));
-  }, [code, rid]);
+    if (!code || !seat) { setMessages([]); return; }
+    let stop = () => {}, dead = false, tries = 0;
+    const seatRef = ref(rtdb, `members/${code}/${seat}`);
+
+    // Claim my seat first (the database only lets seat holders read the chat), then listen.
+    const attach = () => set(seatRef, uid).then(() => {
+      if (dead) return;
+      onDisconnect(seatRef).remove(); // closing the page frees the seat
+      stop = onValue(rtQuery(ref(rtdb, `chats/${code}`), limitToLast(100)), (snap) => {
+        const list = [];
+        snap.forEach((c) => { list.push({ id: c.key, ...c.val() }); });
+        mine.current = list.filter((m) => m.uid === uid).map((m) => m.id);
+        setMessages(list);
+      }, (e) => {
+        // after a refresh the old connection can free my seat a moment late, so re-claim it a few times
+        stop();
+        if (!dead && tries++ < 3) setTimeout(attach, 800); else if (!dead) setError(nice(e));
+      });
+    }).catch((e) => { if (!dead) setError(nice(e)); });
+    attach();
+
+    return () => {
+      dead = true; stop();
+      mine.current.forEach((id) => remove(ref(rtdb, `chats/${code}/${id}`)));
+      mine.current = [];
+      remove(seatRef);
+      setMessages([]);
+    };
+  }, [code, seat, uid]);
 
   // run an action, showing any failure as a message instead of crashing
   const act = (fn) => async (...args) => {
@@ -96,7 +122,9 @@ export function useGame() {
     chat: act(async (text) => {
       text = text.trim().slice(0, 200);
       if (!text || !room) return;
-      await addDoc(collection(db, 'rooms', room.code, 'messages'), { rid: room.rid || room.code, uid, text, at: serverTimestamp() });
+      const msg = push(ref(rtdb, `chats/${room.code}`));
+      await set(msg, { uid, text, at: rtNow() });
+      await onDisconnect(msg).remove(); // vanishes if I close or refresh the page (must be registered after the message exists)
     }),
     clearError: () => setError(''),
 
@@ -117,7 +145,7 @@ export function useGame() {
       let code = newCode();
       while ((await getDoc(roomRef(code))).exists()) code = newCode();
       await setDoc(roomRef(code), {
-        code, rid: crypto.randomUUID(), uids: [uid], players: { X: user, O: null }, board: EMPTY, turn: 'X', starter: 'X',
+        code, uids: [uid], players: { X: user, O: null }, board: EMPTY, turn: 'X', starter: 'X',
         score: { X: 0, O: 0, draws: 0 }, over: false, winner: null, line: null, createdAt: serverTimestamp(),
       });
     }),

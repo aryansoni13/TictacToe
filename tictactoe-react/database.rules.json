@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "members": {
+      "$code": {
+        "$seat": {
+          ".validate": "$seat === 'X' || $seat === 'O'",
+          ".write": "auth != null && ((newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid)) || (!newData.exists() && data.val() === auth.uid))"
+        }
+      }
+    },
+    "chats": {
+      "$code": {
+        ".read": "auth != null && (root.child('members').child($code).child('X').val() === auth.uid || root.child('members').child($code).child('O').val() === auth.uid)",
+        "$msg": {
+          ".write": "auth != null && ((!data.exists() && newData.exists() && (root.child('members').child($code).child('X').val() === auth.uid || root.child('members').child($code).child('O').val() === auth.uid)) || (data.exists() && !newData.exists() && data.child('uid').val() === auth.uid))",
+          ".validate": "newData.hasChildren(['uid', 'text', 'at']) && newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 200 && newData.child('at').isNumber()"
+        }
+      }
+    }
+  }
+}
