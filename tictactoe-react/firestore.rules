@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A room is a game between two signed-in players. `uids` lists who is in it.
+    match /rooms/{code} {
+      allow get: if request.auth != null;                         // anyone signed in can look a room up by its code
+      allow list: if request.auth != null && request.auth.uid in resource.data.uids;  // but can only list their own
+
+      allow create: if request.auth != null
+        && request.resource.data.uids == [request.auth.uid]
+        && request.resource.data.players.X.uid == request.auth.uid
+        && request.resource.data.players.O == null;
+
+      allow update: if request.auth != null && (
+        // join: take the empty O seat, nothing else changes
+        (resource.data.uids.size() == 1
+          && !(request.auth.uid in resource.data.uids)
+          && request.resource.data.uids == resource.data.uids.concat([request.auth.uid])
+          && request.resource.data.players.X == resource.data.players.X
+          && request.resource.data.players.O.uid == request.auth.uid)
+        ||
+        // inside a full room: seats never change, and either a move by the player whose turn it is, or a rematch after the game ended
+        (request.auth.uid in resource.data.uids
+          && resource.data.uids.size() == 2
+          && request.resource.data.uids == resource.data.uids
+          && request.resource.data.players == resource.data.players
+          && ((resource.data.over == false
+                && request.auth.uid == resource.data.players[resource.data.turn].uid)
+              || (resource.data.over == true && request.resource.data.over == false)))
+      );
+
+      allow delete: if request.auth != null && request.auth.uid in resource.data.uids;
+    }
+
+    // One record per finished game, used for each player's history.
+    match /games/{id} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.uids;
+      allow create: if request.auth != null
+        && request.resource.data.uids.size() == 2
+        && request.auth.uid in request.resource.data.uids;
+    }
+  }
+}
