@@ -54,6 +54,8 @@ export function useGame() {
 
     const stopRoom = onSnapshot(query(collection(db, 'rooms'), where('uids', 'array-contains', uid)), (snap) => {
       const next = snap.docs[0]?.data() || null;
+      // a leftover room from before the game menu existed has no game type: clear it instead of crashing on it
+      if (next && !byId[next.game]) { deleteDoc(snap.docs[0].ref); return; }
       if (!next && prevRoom.current && !leaving.current) setError('Your opponent left, so the room was closed');
       if (!next) leaving.current = false;
       prevRoom.current = next;
