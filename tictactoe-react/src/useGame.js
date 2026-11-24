@@ -8,10 +8,9 @@ import {
 } from 'firebase/firestore';
 import { ref, push, set, remove, onValue, onDisconnect, limitToLast, query as rtQuery, serverTimestamp as rtNow } from 'firebase/database';
 import { auth, db, rtdb } from './firebase.js';
+import { byId } from './games/index.js';
 
-const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O, easy to read aloud
-const EMPTY = Array(9).fill('');
 
 const MSG = {
   'auth/email-already-in-use': 'That email already has an account',
@@ -66,7 +65,7 @@ export function useGame() {
         const g = d.data();
         const me = g.x.uid === uid ? 'X' : 'O';
         return {
-          id: d.id, date: g.date, me, opp: (me === 'X' ? g.o : g.x).name,
+          id: d.id, date: g.date, game: g.game, me, opp: (me === 'X' ? g.o : g.x).name,
           result: g.winner === 'draw' ? 'draw' : g.winner === me ? 'win' : 'loss'
         };
       }).sort((a, b) => b.date - a.date).slice(0, 30));
@@ -143,21 +142,23 @@ export function useGame() {
     google: act(() => signInWithPopup(auth, new GoogleAuthProvider())),
     logout: act(() => signOut(auth)),
 
-    create: act(async () => {
+    create: act(async (gameId) => {
       if (room) throw new Error('Leave your current room first');
       let code = newCode();
       while ((await getDoc(roomRef(code))).exists()) code = newCode();
       await setDoc(roomRef(code), {
-        code, uids: [uid], players: { X: user, O: null }, board: EMPTY, turn: 'X', starter: 'X',
-        score: { X: 0, O: 0, draws: 0 }, over: false, winner: null, line: null, createdAt: serverTimestamp(),
+        code, game: gameId, round: 0, uids: [uid], players: { X: user, O: null }, turn: 'X', starter: 'X',
+        score: { X: 0, O: 0, draws: 0 }, over: false, winner: null, createdAt: serverTimestamp(),
+        ...byId[gameId].init(),
       });
     }),
 
-    join: act(async (raw) => {
+    join: act(async (raw, gameId) => {
       if (room) throw new Error('Leave your current room first');
       const snap = await getDoc(roomRef(raw.trim().toUpperCase()));
       if (!snap.exists()) throw new Error('No room with that code');
       const r = snap.data();
+      if (r.game !== gameId) throw new Error(`That code is for ${byId[r.game]?.name || 'another game'}, not ${byId[gameId].name}`);
       if (r.players.O) throw new Error('That room is already full');
       await updateDoc(snap.ref, { uids: [...r.uids, uid], 'players.O': user });
     }),
@@ -168,30 +169,29 @@ export function useGame() {
       await deleteDoc(roomRef(room.code));
     }),
 
-    move: act(async (i) => {
+    // Any game sends its changes through here. `patch` is the fields to change; `winner` ('X', 'O' or 'draw')
+    // ends the game, adds the point, and writes the history record, all in one atomic write.
+    submit: act(async (patch, winner) => {
       const r = room;
-      if (!r || r.over || !r.players.O || r.board[i] || r.players[r.turn].uid !== uid) return;
-      const board = r.board.map((c, n) => (n === i ? r.turn : c));
-      const line = LINES.find(([a, b, c]) => board[a] && board[a] === board[b] && board[a] === board[c]);
+      if (!r || r.over) return;
+      const update = { ...patch };
       const batch = writeBatch(db);
-      if (line || board.every(Boolean)) {
-        const winner = line ? r.turn : 'draw';
-        batch.update(roomRef(r.code), {
-          board, over: true, winner, line: line || null,
-          score: { ...r.score, [line ? r.turn : 'draws']: r.score[line ? r.turn : 'draws'] + 1 },
-        });
-        // only the player who made the final move writes the record, so it is stored exactly once
-        batch.set(doc(collection(db, 'games')), { uids: r.uids, x: r.players.X, o: r.players.O, winner, date: Date.now() });
-      } else {
-        batch.update(roomRef(r.code), { board, turn: r.turn === 'X' ? 'O' : 'X' });
+      if (winner) {
+        const key = winner === 'draw' ? 'draws' : winner;
+        Object.assign(update, { over: true, winner, score: { ...r.score, [key]: r.score[key] + 1 } });
+        // only the player who finished the game writes the record, so it is stored exactly once
+        batch.set(doc(collection(db, 'games')), { uids: r.uids, game: r.game, x: r.players.X, o: r.players.O, winner, date: Date.now() });
       }
+      batch.update(roomRef(r.code), update);
       await batch.commit();
     }),
 
     rematch: act(async () => {
       if (!room?.over) return;
       const s = room.starter === 'X' ? 'O' : 'X'; // alternate who starts
-      await updateDoc(roomRef(room.code), { board: EMPTY, turn: s, starter: s, over: false, winner: null, line: null });
+      await updateDoc(roomRef(room.code), {
+        ...byId[room.game].init(), round: (room.round || 0) + 1, turn: s, starter: s, over: false, winner: null,
+      });
     }),
   };
 }

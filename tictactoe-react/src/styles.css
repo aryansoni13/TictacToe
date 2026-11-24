@@ -614,3 +614,75 @@ html, body { overflow-x: hidden; }
     font-size: .8rem; color: var(--paper); background: var(--ink); border-radius: 999px;
   }
 }
+
+/* ---------- game menu + lobby ---------- */
+.hub h2 { margin: 0 0 1rem; }
+.hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.game-card {
+  display: flex; flex-direction: column; align-items: center; gap: .25rem; padding: 1rem .6rem; text-align: center;
+  font: inherit; color: var(--ink); background: var(--paper); border: var(--line); border-radius: 20px;
+  box-shadow: var(--pop); cursor: pointer; transition: transform .1s, box-shadow .1s;
+}
+.game-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.game-card:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink); }
+.game-card:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--ink); }
+.game-card .emoji { font-size: 2.4rem; line-height: 1; }
+.game-card b { font-size: 1.1rem; }
+.game-card small { opacity: .7; }
+.game-card em {
+  font-style: normal; font-size: .75rem; font-weight: 600; margin-top: .3rem; padding: .05rem .6rem;
+  background: var(--lilac); border: 2px solid var(--ink); border-radius: 999px;
+}
+.lobby .back { align-self: flex-start; margin: 0; }
+.lobby-title { display: flex; align-items: center; justify-content: center; gap: .6rem; }
+.lobby-title h2 { margin: 0; }
+.lobby-title .emoji { font-size: 2rem; }
+
+/* ---------- Connect Four ---------- */
+.board.c4 { grid-template-columns: repeat(7, 1fr); gap: .35rem; padding: .6rem; }
+.cell.disc { padding: 0; border-radius: 50%; box-shadow: 2px 2px 0 var(--ink); }
+.cell.disc-X { background: var(--pink-deep); }
+.cell.disc-O { background: var(--ink); }
+.cell.disc.win { animation: pop .45s ease; outline: 3px solid var(--paper); outline-offset: -7px; }
+
+/* ---------- Memory Match ---------- */
+.board.mem { grid-template-columns: repeat(4, 1fr); }
+.mem-card { padding: 0; font: inherit; font-size: clamp(1.5rem, 7vw, 2.2rem); font-weight: 700; color: var(--pink-deep); background: var(--pink-soft); }
+.mem-card.up { background: var(--paper); }
+.mem-card.win { background: var(--pink); }
+.subscore { margin: .8rem 0 0; font-weight: 600; }
+
+/* ---------- Sliding puzzle ---------- */
+.board.slide { grid-template-columns: repeat(3, 1fr); }
+.board.idle .cell, .board.slide.idle { opacity: .75; }
+.tile { padding: 0; font: inherit; font-size: 2rem; font-weight: 700; color: var(--ink); }
+.tile.right { background: var(--pink-soft); }
+.tile.blank { background: transparent; box-shadow: none; border-style: dashed; }
+
+/* ---------- race games: progress bars ---------- */
+.race { display: grid; gap: .4rem; margin: .2rem 0 .8rem; }
+.race-row { display: grid; grid-template-columns: 6rem 1fr 2.8rem; align-items: center; gap: .5rem; font-size: .85rem; text-align: left; }
+.race-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.race-track { height: .9rem; overflow: hidden; background: var(--paper); border: 2px solid var(--ink); border-radius: 999px; }
+.race-track i { display: block; height: 100%; background: var(--pink); transition: width .3s; }
+
+/* ---------- Sudoku ---------- */
+.sudoku {
+  display: grid; grid-template-columns: repeat(9, 1fr); max-width: 380px; margin: .6rem auto; overflow: hidden;
+  background: var(--paper); border: var(--line); border-radius: 14px; box-shadow: var(--pop);
+}
+.sudoku.idle { opacity: .6; }
+.sd {
+  min-width: 0; aspect-ratio: 1; padding: 0; cursor: pointer; font: inherit; font-size: 1.1rem; font-weight: 600;
+  color: var(--pink-deep); background: var(--paper); border: 0;
+  border-right: 1px solid var(--pink-soft); border-bottom: 1px solid var(--pink-soft);
+}
+.sd:nth-child(9n) { border-right: 0; }
+.sd:nth-child(n+73) { border-bottom: 0; }
+.sd.rb { border-right: 3px solid var(--ink); }
+.sd.bb { border-bottom: 3px solid var(--ink); }
+.sd.given { color: var(--ink); background: #ffeef5; font-weight: 700; }
+.sd.sel { background: var(--lilac); }
+.sd.bad { color: #b3123f; background: #ffd0dc; }
+.numpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; max-width: 380px; margin: .8rem auto 0; }
+.numpad .btn { padding: .45rem 0; box-shadow: 2px 2px 0 var(--ink); }

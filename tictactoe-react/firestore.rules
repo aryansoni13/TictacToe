@@ -2,7 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // 'X' or 'O': which seat the signed-in user holds in this room
+    function mySeat(room) {
+      return request.auth.uid == room.players.X.uid ? 'X' : 'O';
+    }
+
     // A room is a game between two signed-in players. `uids` lists who is in it.
+    // Turn games (ttt, c4, memory) alternate moves. Race games (sudoku, slide) let both players solve at once.
     match /rooms/{code} {
       allow get: if request.auth != null;                         // anyone signed in can look a room up by its code
       allow list: if request.auth != null && request.auth.uid in resource.data.uids;  // but can only list their own
@@ -10,7 +16,8 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.uids == [request.auth.uid]
         && request.resource.data.players.X.uid == request.auth.uid
-        && request.resource.data.players.O == null;
+        && request.resource.data.players.O == null
+        && request.resource.data.game in ['ttt', 'c4', 'memory', 'sudoku', 'slide'];
 
       allow update: if request.auth != null && (
         // join: take the empty O seat, nothing else changes
@@ -18,16 +25,33 @@ service cloud.firestore {
           && !(request.auth.uid in resource.data.uids)
           && request.resource.data.uids == resource.data.uids.concat([request.auth.uid])
           && request.resource.data.players.X == resource.data.players.X
-          && request.resource.data.players.O.uid == request.auth.uid)
+          && request.resource.data.players.O.uid == request.auth.uid
+          && request.resource.data.game == resource.data.game)
         ||
-        // inside a full room: seats never change, and either a move by the player whose turn it is, or a rematch after the game ended
+        // inside a full room: who is in it, and which game, never change
         (request.auth.uid in resource.data.uids
           && resource.data.uids.size() == 2
           && request.resource.data.uids == resource.data.uids
           && request.resource.data.players == resource.data.players
-          && ((resource.data.over == false
+          && request.resource.data.game == resource.data.game
+          && request.resource.data.code == resource.data.code
+          && (
+            // rematch after the game ended
+            (resource.data.over == true && request.resource.data.over == false)
+            ||
+            (resource.data.over == false && (
+              // turn games: only the player whose turn it is may change the room
+              (resource.data.game in ['ttt', 'c4', 'memory']
                 && request.auth.uid == resource.data.players[resource.data.turn].uid)
-              || (resource.data.over == true && request.resource.data.over == false)))
+              ||
+              // race games: you may only change your own progress, or finish the game as the winner
+              (resource.data.game in ['sudoku', 'slide']
+                && request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['prog' + mySeat(resource.data), 'over', 'winner', 'score'])
+                && (request.resource.data.over == false || request.resource.data.winner == mySeat(resource.data)))
+            ))
+          )
+        )
       );
 
       allow delete: if request.auth != null && request.auth.uid in resource.data.uids;
