@@ -54,8 +54,8 @@ export function useGame() {
 
     const stopRoom = onSnapshot(query(collection(db, 'rooms'), where('uids', 'array-contains', uid)), (snap) => {
       const next = snap.docs[0]?.data() || null;
-      // a leftover room from before the game menu existed has no game type: clear it instead of crashing on it
-      if (next && !byId[next.game]) { deleteDoc(snap.docs[0].ref); return; }
+      // a leftover room from before game menus existed has no game field at all: clear it instead of crashing on it
+      if (next && next.game !== null && !byId[next.game]) { deleteDoc(snap.docs[0].ref); return; }
       if (!next && prevRoom.current && !leaving.current) setError('Your opponent left, so the room was closed');
       if (!next) leaving.current = false;
       prevRoom.current = next;
@@ -144,25 +144,32 @@ export function useGame() {
     google: act(() => signInWithPopup(auth, new GoogleAuthProvider())),
     logout: act(() => signOut(auth)),
 
-    create: act(async (gameId) => {
+    // A room starts empty of games: the players pick one inside the room, and can switch whenever they like.
+    create: act(async () => {
       if (room) throw new Error('Leave your current room first');
       let code = newCode();
       while ((await getDoc(roomRef(code))).exists()) code = newCode();
       await setDoc(roomRef(code), {
-        code, game: gameId, round: 0, uids: [uid], players: { X: user, O: null }, turn: 'X', starter: 'X',
+        code, game: null, state: null, round: 0, uids: [uid], players: { X: user, O: null }, turn: 'X', starter: 'X',
         score: { X: 0, O: 0, draws: 0 }, over: false, winner: null, createdAt: serverTimestamp(),
-        ...byId[gameId].init(),
       });
     }),
 
-    join: act(async (raw, gameId) => {
+    join: act(async (raw) => {
       if (room) throw new Error('Leave your current room first');
       const snap = await getDoc(roomRef(raw.trim().toUpperCase()));
       if (!snap.exists()) throw new Error('No room with that code');
       const r = snap.data();
-      if (r.game !== gameId) throw new Error(`That code is for ${byId[r.game]?.name || 'another game'}, not ${byId[gameId].name}`);
       if (r.players.O) throw new Error('That room is already full');
       await updateDoc(snap.ref, { uids: [...r.uids, uid], 'players.O': user });
+    }),
+
+    // Start (or switch to) a game in the current room. Scores and seats are untouched.
+    chooseGame: act(async (gameId) => {
+      if (!room) return;
+      await updateDoc(roomRef(room.code), {
+        ...byId[gameId].init(), game: gameId, round: (room.round || 0) + 1, turn: 'X', starter: 'X', over: false, winner: null,
+      });
     }),
 
     // Leaving closes the room for both players.

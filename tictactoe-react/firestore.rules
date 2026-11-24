@@ -8,6 +8,7 @@ service cloud.firestore {
     }
 
     // A room is a game between two signed-in players. `uids` lists who is in it.
+    // A room starts with no game (game == null) and the players choose one inside it.
     // Turn games (ttt, c4, memory) alternate moves. Race games (sudoku, slide) let both players solve at once.
     match /rooms/{code} {
       allow get: if request.auth != null;                         // anyone signed in can look a room up by its code
@@ -17,7 +18,7 @@ service cloud.firestore {
         && request.resource.data.uids == [request.auth.uid]
         && request.resource.data.players.X.uid == request.auth.uid
         && request.resource.data.players.O == null
-        && request.resource.data.game in ['ttt', 'c4', 'memory', 'sudoku', 'slide'];
+        && request.resource.data.game == null;   // the players pick a game inside the room
 
       allow update: if request.auth != null && (
         // join: take the empty O seat, nothing else changes
@@ -28,7 +29,20 @@ service cloud.firestore {
           && request.resource.data.players.O.uid == request.auth.uid
           && request.resource.data.game == resource.data.game)
         ||
-        // inside a full room: who is in it, and which game, never change
+        // choose or switch the game (either player, any time): only the game and its fresh state may change,
+        // never the seats or the score
+        (request.auth.uid in resource.data.uids
+          && request.resource.data.uids == resource.data.uids
+          && request.resource.data.players == resource.data.players
+          && request.resource.data.code == resource.data.code
+          && request.resource.data.game in ['ttt', 'c4', 'memory', 'sudoku', 'slide']
+          && request.resource.data.game != resource.data.game
+          && request.resource.data.over == false
+          && request.resource.data.winner == null
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['game', 'state', 'round', 'turn', 'starter', 'over', 'winner', 'progX', 'progO']))
+        ||
+        // inside a full room with a game running: who is in it, and which game, never change
         (request.auth.uid in resource.data.uids
           && resource.data.uids.size() == 2
           && request.resource.data.uids == resource.data.uids

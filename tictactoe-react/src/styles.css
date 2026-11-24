@@ -726,3 +726,12 @@ html, body { overflow-x: hidden; }
   .app.wide { padding-top: 2.5rem; }
   .room-layout { gap: 2.25rem; }
 }
+
+/* the game menu inside a room: always 2 across, sized for the board column */
+.play .hub h2 { margin: .4rem 0 .8rem; }
+.play .hub-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; }
+.play .hub-grid .game-card { flex: initial; padding: .8rem .5rem; }
+.play .hub-grid .game-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.play .hub .link { margin: 1rem 0 0; }
+.lobby h2 { margin: 0; }
+

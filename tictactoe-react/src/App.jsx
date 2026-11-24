@@ -28,8 +28,8 @@ function History({ games }) {
   );
 }
 
-// Step 1 after signing in: pick a game.
-function Hub({ onPick }) {
+// The game menu. It lives inside the room, so the game is picked (and can be switched) after the room exists.
+function Hub({ onPick, onCancel }) {
   return (
     <section className="hub">
       <h2>Choose a game</h2>
@@ -43,22 +43,21 @@ function Hub({ onPick }) {
           </button>
         ))}
       </div>
+      {onCancel && <button className="link" onClick={onCancel}>← Back to the game</button>}
     </section>
   );
 }
 
-// Step 2: make a room for that game, or join a friend's.
-function Lobby({ game, gameId, onBack }) {
+// Step 1 after signing in: make a room, or join a friend's. The game is picked inside the room.
+function Lobby({ game }) {
   const [code, setCode] = useState('');
-  const g = byId[gameId];
   return (
     <section className="panel lobby">
-      <button className="link back" onClick={() => { game.clearError(); onBack(); }}>← All games</button>
-      <div className="lobby-title"><span className="emoji">{g.emoji}</span><h2>{g.name}</h2></div>
-      <p className="or">{g.tagline}</p>
-      <button className="btn primary big wide" onClick={() => game.create(gameId)}>Create a room</button>
+      <h2>Play with a friend</h2>
+      <p className="or">Make a room, share the code, then pick any game together.</p>
+      <button className="btn primary big wide" onClick={game.create}>Create a room</button>
       <p className="or">or join a friend's room</p>
-      <form onSubmit={(e) => { e.preventDefault(); game.join(code, gameId); }}>
+      <form onSubmit={(e) => { e.preventDefault(); game.join(code); }}>
         <input className="code-input" placeholder="CODE" value={code} maxLength={4} onChange={(e) => setCode(e.target.value.toUpperCase())} required />
         <button className="btn">Join</button>
       </form>
@@ -105,17 +104,26 @@ function Chat({ game, nameOf, active }) {
 // tab: which panel a phone shows ('game' or 'chat'). Wide screens show both side by side and ignore it.
 function Room({ game, tab, setTab }) {
   const { room, user, messages } = game;
-  const G = byId[room.game];
+  const G = room.game ? byId[room.game] : null; // null until the players pick a game
+  const [picking, setPicking] = useState(false); // showing the menu to switch games
   const [copied, setCopied] = useState(false);
   const [seen, setSeen] = useState(0);
   const me = room.players.X.uid === user.uid ? 'X' : 'O';
   const full = !!room.players.O;
   const name = (m) => room.players[m]?.name;
-  const turnGame = G.kind === 'turn';
+  const turnGame = G?.kind === 'turn';
+  const showMenu = !G || picking;
   const myTurn = full && !room.over && (!turnGame || room.turn === me);
 
   useEffect(() => { if (tab === 'chat') setSeen(messages.length); }, [tab, messages.length]);
+  useEffect(() => { setPicking(false); }, [room.game, room.round]); // the menu closes when anyone starts a game
   const unread = messages.slice(seen).filter((m) => m.uid !== user.uid).length;
+
+  function pick(id) {
+    if (id === room.game) { if (room.over) game.rematch(); setPicking(false); return; } // same game again = rematch
+    if (G && !room.over && !window.confirm('Switch game? The round in progress will be dropped.')) return;
+    game.chooseGame(id);
+  }
 
   function copy() {
     navigator.clipboard?.writeText(room.code);
@@ -123,6 +131,7 @@ function Room({ game, tab, setTab }) {
   }
 
   const status = !full ? 'Waiting for your friend…'
+    : showMenu ? 'Either of you can pick'
     : room.winner === 'draw' ? "It's a draw 💕"
       : room.winner ? (room.winner === me ? 'You win! 🎉' : `${name(room.winner)} wins!`)
         : !turnGame ? 'Race! First to finish wins'
@@ -132,7 +141,7 @@ function Room({ game, tab, setTab }) {
     <div className="room-layout">
       <div className="play">
         <div className="roombar">
-          <span>{G.emoji} {G.name}</span>
+          <span>{G ? `${G.emoji} ${G.name}` : '🎮 No game yet'}</span>
           <button className="code" onClick={copy} title="Copy code">{copied ? 'copied!' : room.code}</button>
         </div>
 
@@ -148,12 +157,15 @@ function Room({ game, tab, setTab }) {
 
         <p className={`status ${room.over ? 'done' : ''}`}>{status}</p>
 
-        {/* key: a rematch is a new round, so each game starts with a fresh local board */}
-        <G.Play key={room.round || 0} room={room} me={me} full={full} myTurn={myTurn}
-          submit={game.submit} names={{ X: name('X'), O: name('O') }} />
+        {showMenu
+          ? <Hub onPick={pick} onCancel={G ? () => setPicking(false) : null} />
+          /* key: a rematch is a new round, so each game starts with a fresh local board */
+          : <G.Play key={room.round || 0} room={room} me={me} full={full} myTurn={myTurn}
+            submit={game.submit} names={{ X: name('X'), O: name('O') }} />}
 
         <div className="actions">
-          {room.over && <button className="btn primary" onClick={game.rematch}>Rematch</button>}
+          {G && room.over && !showMenu && <button className="btn primary" onClick={game.rematch}>Rematch</button>}
+          {G && !showMenu && <button className="btn" onClick={() => setPicking(true)}>Change game</button>}
           <button className="btn" onClick={game.leave}>Leave room</button>
         </div>
       </div>
@@ -176,10 +188,8 @@ export default function App() {
   const game = useGame();
   const { user, room, games, ready } = game;
   const [tab, setTab] = useState('game');
-  const [picked, setPicked] = useState(null); // the game chosen in the menu
 
   useEffect(() => { if (!room) setTab('game'); }, [room]); // a new room always starts on the board
-  useEffect(() => { if (!user) setPicked(null); }, [user]);
 
   return (
     <main className={`app ${room ? 'wide' : user ? 'menu' : ''}`} data-tab={room ? tab : 'game'}>
@@ -187,7 +197,7 @@ export default function App() {
 
       <header>
         <h1>Pink <span>Arcade</span></h1>
-        <p className="tag">pick a game · make a room · play together</p>
+        <p className="tag">make a room · pick a game · play together</p>
         {user && (
           <p className="me">
             Signed in as <b>{user.name}</b>
@@ -198,8 +208,7 @@ export default function App() {
 
       {!ready ? null : !user ? <Auth game={game} />
         : room ? <Room game={game} tab={tab} setTab={setTab} />
-          : picked ? <Lobby game={game} gameId={picked} onBack={() => setPicked(null)} />
-            : <Hub onPick={setPicked} />}
+          : <Lobby game={game} />}
 
       {user && <History games={games} />}
     </main>
