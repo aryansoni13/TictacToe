@@ -66,6 +66,29 @@ function Lobby({ game }) {
   );
 }
 
+// Shown until the friend joins: games stay locked so both people are in before anything starts.
+function Waiting({ code, onCopy, copied }) {
+  return (
+    <section className="panel waiting">
+      <p className="wait-emoji">⏳</p>
+      <h2>Share your room code</h2>
+      <p className="or">Send them this code. The games unlock as soon as they join.</p>
+      <button className="code big" onClick={onCopy} title="Copy code">{copied ? 'copied!' : code}</button>
+    </section>
+  );
+}
+
+// A live pop-up: "Bobby joined" or "Bobby started Sudoku Race". Tap it to go to the game.
+function Toast({ notice, onOpen, onClose }) {
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(onClose, 6000);
+    return () => clearTimeout(t);
+  }, [notice]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!notice) return null;
+  return <button key={notice.id} className="toast" role="status" onClick={onOpen}>🔔 {notice.text}</button>;
+}
+
 function Chat({ game, nameOf, active }) {
   const { messages, user, room } = game;
   const [text, setText] = useState('');
@@ -107,17 +130,20 @@ function Room({ game, tab, setTab }) {
   const G = room.game ? byId[room.game] : null; // null until the players pick a game
   const [picking, setPicking] = useState(false); // showing the menu to switch games
   const [copied, setCopied] = useState(false);
+  const [asked, setAsked] = useState(false); // re-renders after the permission prompt
   const [seen, setSeen] = useState(0);
   const me = room.players.X.uid === user.uid ? 'X' : 'O';
   const full = !!room.players.O;
   const name = (m) => room.players[m]?.name;
   const turnGame = G?.kind === 'turn';
-  const showMenu = !G || picking;
+  const showMenu = full && (!G || picking); // games stay locked until both players are in
   const myTurn = full && !room.over && (!turnGame || room.turn === me);
 
   useEffect(() => { if (tab === 'chat') setSeen(messages.length); }, [tab, messages.length]);
   useEffect(() => { setPicking(false); }, [room.game, room.round]); // the menu closes when anyone starts a game
   const unread = messages.slice(seen).filter((m) => m.uid !== user.uid).length;
+
+  const canAlert = typeof Notification !== 'undefined' && Notification.permission === 'default' && !asked;
 
   function pick(id) {
     if (id === room.game) { if (room.over) game.rematch(); setPicking(false); return; } // same game again = rematch
@@ -145,6 +171,12 @@ function Room({ game, tab, setTab }) {
           <button className="code" onClick={copy} title="Copy code">{copied ? 'copied!' : room.code}</button>
         </div>
 
+        {canAlert && (
+          <button className="link alerts" onClick={() => Notification.requestPermission().then(() => setAsked(true))}>
+            🔔 Alert me when I'm in another tab
+          </button>
+        )}
+
         <section className="scores">
           {['X', 'O'].map((m) => (
             <div key={m} className={`card ${turnGame && full && !room.over && room.turn === m ? 'live' : ''}`}>
@@ -160,8 +192,10 @@ function Room({ game, tab, setTab }) {
         {showMenu
           ? <Hub onPick={pick} onCancel={G ? () => setPicking(false) : null} />
           /* key: a rematch is a new round, so each game starts with a fresh local board */
-          : <G.Play key={room.round || 0} room={room} me={me} full={full} myTurn={myTurn}
-            submit={game.submit} names={{ X: name('X'), O: name('O') }} />}
+          : !G
+            ? <Waiting code={room.code} onCopy={copy} copied={copied} />
+            : <G.Play key={room.round || 0} room={room} me={me} full={full} myTurn={myTurn}
+              submit={game.submit} names={{ X: name('X'), O: name('O') }} />}
 
         <div className="actions">
           {G && room.over && !showMenu && <button className="btn primary" onClick={game.rematch}>Rematch</button>}
@@ -186,7 +220,7 @@ function Room({ game, tab, setTab }) {
 
 export default function App() {
   const game = useGame();
-  const { user, room, games, ready } = game;
+  const { user, room, games, ready, notice } = game;
   const [tab, setTab] = useState('game');
 
   useEffect(() => { if (!room) setTab('game'); }, [room]); // a new room always starts on the board
@@ -194,6 +228,8 @@ export default function App() {
   return (
     <main className={`app ${room ? 'wide' : user ? 'menu' : ''}`} data-tab={room ? tab : 'game'}>
       <i className="blob b1" /><i className="blob b2" /><i className="blob b3" /><i className="star s1">✦</i><i className="star s2">✦</i>
+
+      <Toast notice={notice} onClose={game.dismissNotice} onOpen={() => { setTab('game'); game.dismissNotice(); }} />
 
       <header>
         <h1>Pink <span>Arcade</span></h1>

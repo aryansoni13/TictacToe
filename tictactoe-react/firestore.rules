@@ -29,9 +29,10 @@ service cloud.firestore {
           && request.resource.data.players.O.uid == request.auth.uid
           && request.resource.data.game == resource.data.game)
         ||
-        // choose or switch the game (either player, any time): only the game and its fresh state may change,
-        // never the seats or the score
+        // choose or switch the game (either player, any time, but only once both players have joined):
+        // only the game and its fresh state may change, never the seats or the score
         (request.auth.uid in resource.data.uids
+          && resource.data.uids.size() == 2
           && request.resource.data.uids == resource.data.uids
           && request.resource.data.players == resource.data.players
           && request.resource.data.code == resource.data.code
@@ -39,8 +40,9 @@ service cloud.firestore {
           && request.resource.data.game != resource.data.game
           && request.resource.data.over == false
           && request.resource.data.winner == null
+          && request.resource.data.startedBy.uid == request.auth.uid   // who started it, used for the other player's pop-up
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['game', 'state', 'round', 'turn', 'starter', 'over', 'winner', 'progX', 'progO']))
+               .hasOnly(['game', 'startedBy', 'state', 'round', 'turn', 'starter', 'over', 'winner', 'progX', 'progO']))
         ||
         // inside a full room with a game running: who is in it, and which game, never change
         (request.auth.uid in resource.data.uids

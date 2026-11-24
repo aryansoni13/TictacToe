@@ -40,6 +40,7 @@ export function useGame() {
   const [games, setGames] = useState([]);
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState(null); // a live pop-up for things the other player just did
   const prevRoom = useRef(null);
   const leaving = useRef(false);
 
@@ -58,6 +59,23 @@ export function useGame() {
       if (next && next.game !== null && !byId[next.game]) { deleteDoc(snap.docs[0].ref); return; }
       if (!next && prevRoom.current && !leaving.current) setError('Your opponent left, so the room was closed');
       if (!next) leaving.current = false;
+      // tell me what the other player just did: joined the room, or started a game
+      const prev = prevRoom.current;
+      if (next && prev) {
+        let text = null;
+        if (!prev.players.O && next.players.O) text = `${next.players.O.name} joined, pick a game!`;
+        else if (next.game && next.startedBy && next.startedBy.uid !== uid && (next.round !== prev.round || next.game !== prev.game)) {
+          const g = byId[next.game].name;
+          text = next.game === prev.game ? `${next.startedBy.name} started a new round of ${g}` : `${next.startedBy.name} started ${g}`;
+        }
+        if (text) {
+          setNotice({ id: Date.now(), text });
+          // if this tab isn't in front, also use the system notification (only if the player allowed it)
+          if (document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            new Notification('Pink Arcade', { body: text });
+          }
+        }
+      }
       prevRoom.current = next;
       setRoom(next);
     }, (e) => setError(nice(e)));
@@ -73,7 +91,7 @@ export function useGame() {
       }).sort((a, b) => b.date - a.date).slice(0, 30));
     }, (e) => setError(nice(e)));
 
-    return () => { stopRoom(); stopGames(); prevRoom.current = null; };
+    return () => { stopRoom(); stopGames(); prevRoom.current = null; setNotice(null); };
   }, [uid]);
 
   // Live chat for the current room, kept in the Realtime Database only while people are connected.
@@ -121,7 +139,8 @@ export function useGame() {
   const roomRef = (code) => doc(db, 'rooms', code);
 
   return {
-    user, ready, room, games, messages, error,
+    user, ready, room, games, messages, error, notice,
+    dismissNotice: () => setNotice(null),
 
     chat: act(async (text) => {
       text = text.trim().slice(0, 200);
@@ -150,7 +169,7 @@ export function useGame() {
       let code = newCode();
       while ((await getDoc(roomRef(code))).exists()) code = newCode();
       await setDoc(roomRef(code), {
-        code, game: null, state: null, round: 0, uids: [uid], players: { X: user, O: null }, turn: 'X', starter: 'X',
+        code, game: null, startedBy: null, state: null, round: 0, uids: [uid], players: { X: user, O: null }, turn: 'X', starter: 'X',
         score: { X: 0, O: 0, draws: 0 }, over: false, winner: null, createdAt: serverTimestamp(),
       });
     }),
@@ -168,7 +187,7 @@ export function useGame() {
     chooseGame: act(async (gameId) => {
       if (!room) return;
       await updateDoc(roomRef(room.code), {
-        ...byId[gameId].init(), game: gameId, round: (room.round || 0) + 1, turn: 'X', starter: 'X', over: false, winner: null,
+        ...byId[gameId].init(), game: gameId, startedBy: user, round: (room.round || 0) + 1, turn: 'X', starter: 'X', over: false, winner: null,
       });
     }),
 
@@ -199,7 +218,7 @@ export function useGame() {
       if (!room?.over) return;
       const s = room.starter === 'X' ? 'O' : 'X'; // alternate who starts
       await updateDoc(roomRef(room.code), {
-        ...byId[room.game].init(), round: (room.round || 0) + 1, turn: s, starter: s, over: false, winner: null,
+        ...byId[room.game].init(), startedBy: user, round: (room.round || 0) + 1, turn: s, starter: s, over: false, winner: null,
       });
     }),
   };
