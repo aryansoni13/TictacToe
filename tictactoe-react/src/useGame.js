@@ -191,9 +191,9 @@ export function useGame() {
     }),
 
     // Picking a game sends the other player an invite; nothing changes for them until they accept.
-    invite: act(async (gameId) => {
+    invite: act(async (gameId, level = null) => {
       if (!room?.players.O) return;
-      await updateDoc(roomRef(room.code), { invite: { game: gameId, by: user } });
+      await updateDoc(roomRef(room.code), { invite: { game: gameId, by: user, level } }); // level: difficulty, for games that have one
     }),
 
     // Accepting starts the invited game for both players, in the same session. Scores and seats are untouched.
@@ -201,7 +201,7 @@ export function useGame() {
       const inv = room?.invite;
       if (!inv || inv.by.uid === uid) return;
       await updateDoc(roomRef(room.code), {
-        ...byId[inv.game].init(), game: inv.game, invite: null, startedBy: user, round: (room.round || 0) + 1,
+        ...byId[inv.game].init(inv.level), game: inv.game, invite: null, startedBy: user, round: (room.round || 0) + 1,
         turn: 'X', starter: 'X', over: false, winner: null,
       });
     }),
@@ -238,7 +238,7 @@ export function useGame() {
       if (!room?.over) return;
       const s = room.starter === 'X' ? 'O' : 'X'; // alternate who starts
       await updateDoc(roomRef(room.code), {
-        ...byId[room.game].init(), startedBy: user, round: (room.round || 0) + 1, turn: s, starter: s, over: false, winner: null,
+        ...byId[room.game].init(room.state?.level), startedBy: user, round: (room.round || 0) + 1, turn: s, starter: s, over: false, winner: null,
       });
     }),
   };

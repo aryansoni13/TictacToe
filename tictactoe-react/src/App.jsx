@@ -30,12 +30,28 @@ function History({ games }) {
 
 // The game menu. It lives inside the room, so the game is picked (and can be switched) after the room exists.
 function Hub({ onPick, onCancel }) {
+  const [choosing, setChoosing] = useState(null); // a game with difficulty levels asks for one first
+  if (choosing) {
+    return (
+      <section className="hub">
+        <h2>{choosing.emoji} {choosing.name}: choose difficulty</h2>
+        <div className="photo-levels">
+          {Object.entries(choosing.levels).map(([k, v]) => (
+            <button key={k} className="game-card" onClick={() => onPick(choosing.id, k)}>
+              <b>{k}</b><small>{v.n * v.n} pieces</small><em>{v.tip}</em>
+            </button>
+          ))}
+        </div>
+        <button className="link" onClick={() => setChoosing(null)}>← Back</button>
+      </section>
+    );
+  }
   return (
     <section className="hub">
       <h2>Invite your friend to a game</h2>
       <div className="hub-grid">
         {GAMES.map((g) => (
-          <button key={g.id} className="game-card" onClick={() => onPick(g.id)}>
+          <button key={g.id} className="game-card" onClick={() => (g.levels ? setChoosing(g) : onPick(g.id))}>
             <span className="emoji">{g.emoji}</span>
             <b>{g.name}</b>
             <small>{g.tagline}</small>
@@ -161,9 +177,10 @@ function Room({ game, tab, setTab }) {
 
   const canAlert = typeof Notification !== 'undefined' && Notification.permission === 'default' && !asked;
 
-  function pick(id) {
-    if (id === room.game) { if (room.over) game.rematch(); setPicking(false); return; } // same game again = rematch
-    game.invite(id); // the other player decides whether to join
+  function pick(id, level) {
+    // same game again = rematch, except a game with levels, which always invites so the new level is used
+    if (id === room.game && !level) { if (room.over) game.rematch(); setPicking(false); return; }
+    game.invite(id, level); // the other player decides whether to join
     setPicking(false);
   }
 
