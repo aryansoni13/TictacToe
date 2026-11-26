@@ -18,7 +18,6 @@ function Play({ room, myTurn, submit }) {
     const o = [...open, i];
     if (o.length === 1 || cards[o[0]] !== cards[o[1]]) return submit({ state: { ...room.state, open: o } });
 
-    // a pair: score it and the same player goes again
     const m = [...matched, ...o];
     const p = { ...pairs, [room.turn]: pairs[room.turn] + 1 };
     const state = { ...room.state, open: [], matched: m, pairs: p };
@@ -26,7 +25,6 @@ function Play({ room, myTurn, submit }) {
     submit({ state }, p.X === p.O ? 'draw' : p.X > p.O ? 'X' : 'O');
   }
 
-  // after a miss, the player whose turn it is flips the two cards back and passes the turn
   useEffect(() => {
     if (open.length !== 2 || !myTurn) return;
     const t = setTimeout(() => submit({ state: { ...room.state, open: [] }, turn: room.turn === 'X' ? 'O' : 'X' }), 1100);

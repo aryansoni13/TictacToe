@@ -1,16 +1,14 @@
 import { useRef, useState } from 'react';
 import { RaceBars } from './Race.jsx';
 
-// n = grid size (16, 36, 64, 100 pieces: always even, so both players get an equal share); ghost = how visible the faint guide picture on the board is; snap = how close a drop must be
 const LEVELS = {
   easy: { n: 4, ghost: 0.35, snap: 0.45, tip: 'Big pieces, clear guide picture' },
   medium: { n: 6, ghost: 0.18, snap: 0.35, tip: 'More pieces, faint guide' },
   hard: { n: 8, ghost: 0, snap: 0.3, tip: 'No guide picture, only hold-to-preview' },
   expert: { n: 10, ghost: 0, snap: 0.22, tip: '100 pieces, no guide, precise drops' },
 };
-const SIZE = 160, BOARD = 100, OFF = 30; // svg units: the picture is a BOARD square at (OFF, OFF), pieces scatter around it
+const SIZE = 160, BOARD = 100, OFF = 30; 
 
-// Shrink the photo to a 480px square JPEG (~50KB) so it fits in the room document both players read.
 function toSquare(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -27,7 +25,6 @@ function toSquare(file) {
   });
 }
 
-// One side of a piece from A to B: flat (s=0), or a round knob sticking out (s=1) or a matching dent (s=-1).
 function side(ax, ay, bx, by, nx, ny, s, p) {
   if (!s) return ` L ${bx} ${by}`;
   const P = (u, h) => `${ax + (bx - ax) * u + nx * s * h * p} ${ay + (by - ay) * u + ny * s * h * p}`;
