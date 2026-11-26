@@ -105,9 +105,6 @@ export function useGame() {
 
     return () => { stopRoom(); stopGames(); prevRoom.current = null; setNotice(null); };
   }, [uid]);
-
-  // Live chat for the current room, kept in the Realtime Database only while people are connected.
-  // Nothing is archived: your messages are deleted when you leave, close or refresh the page.
   const code = room?.code;
   const seat = room && (room.players.X.uid === uid ? 'X' : 'O');
   const mine = useRef([]); // ids of my messages, so they can be deleted when I leave
