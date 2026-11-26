@@ -39,7 +39,7 @@ function Play({ room, myTurn, submit }) {
 }
 
 export default {
-  id: 'ttt', name: 'Tic Tac Toe', emoji: '❌', tagline: 'Three in a row wins', how: 'Take turns',
+  order: 1, id: 'ttt', name: 'Tic Tac Toe', emoji: '❌', tagline: 'Three in a row wins', how: 'Take turns',
   kind: 'turn',
   init: () => ({ state: { board: Array(9).fill(''), line: null } }),
   Play,

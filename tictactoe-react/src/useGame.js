@@ -8,7 +8,12 @@ import {
 } from 'firebase/firestore';
 import { ref, push, set, remove, onValue, onDisconnect, limitToLast, query as rtQuery, serverTimestamp as rtNow } from 'firebase/database';
 import { auth, db, rtdb } from './firebase.js';
-import { byId } from './games/index.js';
+
+// Every game is a file in ./games with a default export (id, name, kind, init, Play, order). Adding a game is
+// just adding a file there: it is picked up here, no list to edit. (Race.jsx has no default export, so it is skipped.)
+export const GAMES = Object.values(import.meta.glob('./games/*.jsx', { eager: true }))
+  .map((m) => m.default).filter((g) => g?.id).sort((a, b) => a.order - b.order);
+export const byId = Object.fromEntries(GAMES.map((g) => [g.id, g]));
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O, easy to read aloud
 

@@ -9,7 +9,7 @@ service cloud.firestore {
 
     // A room is a game between two signed-in players. `uids` lists who is in it.
     // A room starts with no game (game == null) and the players choose one inside it.
-    // Turn games (ttt, memory, photo) alternate moves. Race games (sudoku, slide) let both players solve at once.
+    // Turn games (ttt, memory, photo) alternate moves. Race games (sudoku) let both players solve at once.
     match /rooms/{code} {
       allow get: if request.auth != null;                         // anyone signed in can look a room up by its code
       allow list: if request.auth != null && request.auth.uid in resource.data.uids;  // but can only list their own
@@ -38,7 +38,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['invite'])
           && (request.resource.data.invite == null
               || (request.resource.data.invite.by.uid == request.auth.uid
-                  && request.resource.data.invite.game in ['ttt', 'photo', 'memory', 'sudoku', 'slide'])))
+                  && request.resource.data.invite.game in ['ttt', 'photo', 'memory', 'sudoku'])))
         ||
         // accept the OTHER player's invite: this is the only way a game starts or is switched, so nobody can
         // force a game on the other. Only the game and its fresh state change, never the seats or the score.
@@ -80,7 +80,7 @@ service cloud.firestore {
                 && request.auth.uid == resource.data.players[resource.data.turn].uid)
               ||
               // race games: you may only change your own progress, or finish the game as the winner
-              (resource.data.game in ['sudoku', 'slide']
+              (resource.data.game in ['sudoku']
                 && request.resource.data.diff(resource.data).affectedKeys()
                      .hasOnly(['prog' + mySeat(resource.data), 'over', 'winner', 'score'])
                 && (request.resource.data.over == false || request.resource.data.winner == mySeat(resource.data)))

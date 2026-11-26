@@ -662,12 +662,7 @@ html, body { overflow-x: hidden; }
 .mem-card.win { background: var(--pink); }
 .subscore { margin: .8rem 0 0; font-weight: 600; }
 
-/* ---------- Sliding puzzle ---------- */
-.board.slide { grid-template-columns: repeat(3, 1fr); }
-.board.idle .cell, .board.slide.idle { opacity: .75; }
-.tile { padding: 0; font: inherit; font-size: 2rem; font-weight: 700; color: var(--ink); }
-.tile.right { background: var(--pink-soft); }
-.tile.blank { background: transparent; box-shadow: none; border-style: dashed; }
+.board.idle .cell { opacity: .75; }
 
 /* ---------- race games: progress bars ---------- */
 .race { display: grid; gap: .4rem; margin: .2rem 0 .8rem; }

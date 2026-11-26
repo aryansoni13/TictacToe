@@ -110,7 +110,7 @@ function Play({ room, me, full, submit, names }) {
 }
 
 export default {
-  id: 'sudoku', name: 'Sudoku Race', emoji: '🔢', tagline: 'Same puzzle, first to solve it wins', how: 'Race',
+  order: 4, id: 'sudoku', name: 'Sudoku Race', emoji: '🔢', tagline: 'Same puzzle, first to solve it wins', how: 'Race',
   kind: 'race',
   init: () => ({ state: { puzzle: makePuzzle() }, progX: 0, progO: 0 }),
   Play,

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Auth from './Auth.jsx';
-import { useGame } from './useGame.js';
-import { GAMES, byId } from './games/index.js';
+import { useGame, GAMES, byId } from './useGame.js';
 
 function History({ games }) {
   const count = (r) => games.filter((g) => g.result === r).length;
@@ -191,10 +190,10 @@ function Room({ game, tab, setTab }) {
 
   const status = !full ? 'Waiting for your friend…'
     : showMenu ? 'Pick a game to invite them'
-    : room.winner === 'draw' ? "It's a draw 💕"
-      : room.winner ? (room.winner === me ? 'You win! 🎉' : `${name(room.winner)} wins!`)
-        : !turnGame ? 'Race! First to finish wins'
-          : myTurn ? 'Your turn' : `${name(room.turn)}'s turn…`;
+      : room.winner === 'draw' ? "It's a draw 💕"
+        : room.winner ? (room.winner === me ? 'You win! 🎉' : `${name(room.winner)} wins!`)
+          : !turnGame ? 'Race! First to finish wins'
+            : myTurn ? 'Your turn' : `${name(room.turn)}'s turn…`;
 
   return (
     <div className="room-layout">

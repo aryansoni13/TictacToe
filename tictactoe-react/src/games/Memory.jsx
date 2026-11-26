@@ -57,7 +57,7 @@ function Play({ room, myTurn, submit }) {
 }
 
 export default {
-  id: 'memory', name: 'Memory Match', emoji: '🍓', tagline: 'Flip cards and find the pairs', how: 'Take turns',
+  order: 3, id: 'memory', name: 'Memory Match', emoji: '🍓', tagline: 'Flip cards and find the pairs', how: 'Take turns',
   kind: 'turn',
   init: () => ({
     state: { cards: shuffle([...FACES, ...FACES]), open: [], matched: [], pairs: { X: 0, O: 0 } },

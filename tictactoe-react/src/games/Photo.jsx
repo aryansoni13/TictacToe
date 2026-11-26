@@ -210,7 +210,7 @@ function Play(props) {
 }
 
 export default {
-  id: 'photo', name: 'Picture Puzzle', emoji: '🖼️', tagline: 'Upload a photo and piece the jigsaw together', how: 'Take turns',
+  order: 2, id: 'photo', name: 'Picture Puzzle', emoji: '🖼️', tagline: 'Upload a photo and piece the jigsaw together', how: 'Take turns',
   kind: 'turn', // players take turns: one drop each, a correct drop scores
   levels: LEVELS, // the menu asks for one of these before inviting
   init: (level) => {
